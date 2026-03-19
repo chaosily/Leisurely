@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>토끼 무한 타워</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'Segoe UI', sans-serif;
+      touch-action: none;
+    }
+    #gameWrapper {
+      position: relative;
+      width: 360px;
+      height: 640px;
+    }
+    canvas {
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 0 40px rgba(120, 80, 255, 0.5);
+    }
+    #ui {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+    #score {
+      position: absolute;
+      top: 20px; left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 28px;
+      font-weight: bold;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      letter-spacing: 2px;
+    }
+    #bestScore {
+      position: absolute;
+      top: 54px; left: 50%;
+      transform: translateX(-50%);
+      color: #ffd700;
+      font-size: 14px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 10, 30, 0.82);
+      border-radius: 16px;
+      pointer-events: all;
+      cursor: pointer;
+    }
+    #overlay h1 {
+      font-size: 36px;
+      color: #fff;
+      text-shadow: 0 0 20px #a78bfa;
+      margin-bottom: 8px;
+    }
+    #overlay .subtitle {
+      font-size: 16px;
+      color: #c4b5fd;
+      margin-bottom: 32px;
+    }
+    #overlay .hint {
+      font-size: 20px;
+      color: #fff;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      padding: 14px 36px;
+      border-radius: 50px;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.6);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    #overlay .final-score {
+      font-size: 22px;
+      color: #fbbf24;
+      margin-bottom: 8px;
+    }
+    #overlay .final-best {
+      font-size: 15px;
+      color: #d1fae5;
+      margin-bottom: 28px;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(124,58,237,0.6); }
+      50% { transform: scale(1.06); box-shadow: 0 4px 30px rgba(124,58,237,0.9); }
+    }
+  </style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="360" height="640"></canvas>
+  <div id="ui">
+    <div id="score">0</div>
+    <div id="bestScore">최고: 0</div>
+  </div>
+  <div id="overlay" id="overlay">
+    <h1>🐰 토끼 타워</h1>
+    <div class="subtitle">화면을 터치해서 점프!</div>
+    <div class="hint">탭해서 시작</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const overlay = document.getElementById('overlay');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('bestScore');
+
+// ── 색상 팔레트 ──
+const COLORS = {
+  sky: ['#0f0c29', '#302b63', '#24243e'],
+  platformBase: '#7c3aed',
+  platformTop: '#a78bfa',
+  platformGlow: 'rgba(167,139,250,0.3)',
+  star: '#e9d5ff',
+  ground: '#4c1d95',
+};
+
+// ── 게임 상태 ──
+let state = 'idle'; // idle | playing | dead
+let score = 0, best = 0;
+let cameraY = 0;
+let frameId;
+
+// ── 파티클 ──
+let particles = [];
+
+// ── 플랫폼 ──
+const PLAT_W = 90, PLAT_H = 14;
+let platforms = [];
+
+function makePlatform(y) {
+  const margin = 20;
+  const x = margin + Math.random() * (W - PLAT_W - margin * 2);
+  const moving = score > 5 && Math.random() < 0.3 + score * 0.01;
+  return {
+    x, y,
+    w: PLAT_W - Math.min(score * 1.5, 40),
+    h: PLAT_H,
+    vx: moving ? (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random()) : 0,
+    glow: 0,
+  };
+}
+
+function initPlatforms() {
+  platforms = [];
+  // 시작 발판 (넓고 안전하게)
+  platforms.push({ x: W / 2 - 60, y: H - 80, w: 120, h: PLAT_H, vx: 0, glow: 0 });
+  let y = H - 80 - 90;
+  while (y > -200) {
+    platforms.push(makePlatform(y));
+    y -= 75 + Math.random() * 30;
+  }
+}
+
+// ── 별 배경 ──
+let stars = [];
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 80; i++) {
+    stars.push({ x: Math.random() * W, y: Math.random() * H * 6, r: Math.random() * 1.5 + 0.3, a: Math.random() });
+  }
+}
+
+// ── 토끼 ──
+const rabbit = {
+  x: W / 2, y: H - 80 - 40,
+  w: 28, h: 36,
+  vx: 0, vy: 0,
+  onGround: false,
+  facing: 1, // 1=right, -1=left
+  frame: 0, frameTimer: 0,
+  squish: 1, squishTimer: 0,
+};
+const GRAVITY = 0.45;
+const JUMP_VY = -11.5;
+
+function resetRabbit() {
+  rabbit.x = W / 2;
+  rabbit.y = H - 80 - 40;
+  rabbit.vx = 0; rabbit.vy = 0;
+  rabbit.onGround = false;
+  rabbit.facing = 1;
+  rabbit.squish = 1; rabbit.squishTimer = 0;
+  rabbit.frame = 0;
+}
+
+function jump() {
+  rabbit.vy = JUMP_VY;
+  rabbit.onGround = false;
+  rabbit.squish = 1.5;
+  rabbit.squishTimer = 8;
+  spawnJumpParticles();
+}
+
+// ── 파티클 ──
+function spawnJumpParticles() {
+  for (let i = 0; i < 8; i++) {
+    particles.push({
+      x: rabbit.x, y: rabbit.y + rabbit.h / 2,
+      vx: (Math.random() - 0.5) * 3,
+      vy: Math.random() * 2 + 1,
+      life: 1, decay: 0.06 + Math.random() * 0.04,
+      r: Math.random() * 5 + 2,
+      color: `hsl(${260 + Math.random() * 60}, 80%, 70%)`,
+    });
+  }
+}
+
+function spawnLandParticles(px, pw) {
+  for (let i = 0; i < 6; i++) {
+    particles.push({
+      x: px + Math.random() * pw,
+      y: rabbit.y + rabbit.h / 2,
+      vx: (Math.random() - 0.5) * 4,
+      vy: -(Math.random() * 2 + 0.5),
+      life: 1, decay: 0.07,
+      r: Math.random() * 4 + 1,
+      color: `hsl(${270 + Math.random() * 40}, 70%, 75%)`,
+    });
+  }
+}
+
+// ── 그리기: 토끼 ──
+function drawRabbit(rx, ry) {
+  const sx = rabbit.squish > 1 ? 1 / rabbit.squish : rabbit.squish < 1 ? 1 / rabbit.squish : 1;
+  const sy = rabbit.squish;
+  ctx.save();
+  ctx.translate(rx, ry);
+  ctx.scale(rabbit.facing * sx, sy);
+
+  // 몸통
+  ctx.fillStyle = '#f5f0ff';
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 13, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 귀 (두 개)
+  ctx.fillStyle = '#ede9fe';
+  ctx.beginPath();
+  ctx.ellipse(-6, -20, 5, 14, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(6, -20, 5, 14, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 귀 안쪽 (핑크)
+  ctx.fillStyle = '#f9a8d4';
+  ctx.beginPath();
+  ctx.ellipse(-6, -20, 2.5, 9, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(6, -20, 2.5, 9, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 머리
+  ctx.fillStyle = '#f5f0ff';
+  ctx.beginPath();
+  ctx.ellipse(0, -8, 12, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 눈
+  ctx.fillStyle = '#1e1b4b';
+  ctx.beginPath();
+  ctx.arc(-4, -10, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(4, -10, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 눈 하이라이트
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-3, -11, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(5, -11, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 코
+  ctx.fillStyle = '#fda4af';
+  ctx.beginPath();
+  ctx.ellipse(0, -5, 2.5, 1.8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 볼터치
+  ctx.fillStyle = 'rgba(253, 164, 175, 0.5)';
+  ctx.beginPath();
+  ctx.arc(-7, -7, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(7, -7, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 앞발
+  ctx.fillStyle = '#ede9fe';
+  ctx.beginPath();
+  ctx.ellipse(-10, 10, 4, 6, -0.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(10, 10, 4, 6, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 꼬리
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(13, 8, 6, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ── 그리기: 플랫폼 ──
+function drawPlatform(p, camY) {
+  const px = p.x, py = p.y - camY, pw = p.w, ph = p.h;
+  if (py < -20 || py > H + 20) return;
+
+  // 글로우
+  ctx.save();
+  ctx.shadowColor = '#a78bfa';
+  ctx.shadowBlur = 12 + p.glow * 8;
+
+  // 본체 그라디언트
+  const grad = ctx.createLinearGradient(px, py, px, py + ph);
+  grad.addColorStop(0, '#c4b5fd');
+  grad.addColorStop(1, '#5b21b6');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(px, py, pw, ph, 6);
+  ctx.fill();
+
+  // 상단 하이라이트
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.roundRect(px + 4, py + 2, pw - 8, 4, 3);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ── 그라디언트 배경 ──
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0f0c29');
+  grad.addColorStop(0.5, '#302b63');
+  grad.addColorStop(1, '#1a0533');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawStars() {
+  for (const s of stars) {
+    const sy = ((s.y - cameraY * 0.2) % (H * 6) + H * 6) % (H * 6);
+    if (sy < 0 || sy > H) continue;
+    ctx.globalAlpha = s.a * (0.5 + 0.5 * Math.sin(Date.now() * 0.001 + s.x));
+    ctx.fillStyle = COLORS.star;
+    ctx.beginPath();
+    ctx.arc(s.x, sy, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ── 업데이트 ──
+function update() {
+  // 중력
+  rabbit.vy += GRAVITY;
+  rabbit.x += rabbit.vx;
+  rabbit.y += rabbit.vy;
+
+  // 방향
+  if (rabbit.vx > 0.1) rabbit.facing = 1;
+  else if (rabbit.vx < -0.1) rabbit.facing = -1;
+
+  // 좌우 벽 wrapping
+  if (rabbit.x < -rabbit.w / 2) rabbit.x = W + rabbit.w / 2;
+  if (rabbit.x > W + rabbit.w / 2) rabbit.x = -rabbit.w / 2;
+
+  // 스쿼시 복원
+  if (rabbit.squishTimer > 0) {
+    rabbit.squishTimer--;
+    rabbit.squish = 1 + (rabbit.squish - 1) * 0.8;
+  } else {
+    rabbit.squish = 1;
+  }
+
+  // 플랫폼 충돌 (위에서 아래로 내려올 때만)
+  rabbit.onGround = false;
+  if (rabbit.vy >= 0) {
+    for (const p of platforms) {
+      const py = p.y - cameraY;
+      const rx = rabbit.x - rabbit.w / 2, rr = rabbit.x + rabbit.w / 2;
+      const rb = rabbit.y + rabbit.h / 2;
+      const prevBottom = rb - rabbit.vy;
+      if (
+        rr > p.x + 4 && rx < p.x + p.w - 4 &&
+        rb >= py && prevBottom <= py + p.h &&
+        rabbit.y + rabbit.h / 2 <= py + p.h + 2
+      ) {
+        rabbit.y = py - rabbit.h / 2;
+        rabbit.vx = p.vx * 0.6;
+        rabbit.onGround = true;
+        p.glow = 1;
+        spawnLandParticles(p.x, p.w);
+        break;
+      }
+    }
+  }
+
+  // 카메라 (토끼가 화면 중간 이상 올라가면 카메라 올림)
+  const targetCam = rabbit.y - H * 0.45;
+  if (targetCam < cameraY) {
+    cameraY += (targetCam - cameraY) * 0.12;
+  }
+
+  // 점수 = 올라간 높이
+  const newScore = Math.max(score, Math.round(-cameraY / 50));
+  if (newScore > score) {
+    score = newScore;
+    scoreEl.textContent = score;
+  }
+
+  // 플랫폼 이동 & 생성 & 제거
+  for (const p of platforms) {
+    if (p.vx !== 0) {
+      p.x += p.vx;
+      if (p.x < 10 || p.x + p.w > W - 10) p.vx *= -1;
+    }
+    if (p.glow > 0) p.glow -= 0.05;
+  }
+
+  // 화면 아래로 사라진 플랫폼 제거
+  platforms = platforms.filter(p => p.y - cameraY < H + 50);
+
+  // 위쪽에 새 플랫폼 추가
+  const topY = Math.min(...platforms.map(p => p.y));
+  if (topY - cameraY > -200) {
+    let y = topY - (75 + Math.random() * 30);
+    while (y - cameraY > -300) {
+      platforms.push(makePlatform(y));
+      y -= 75 + Math.random() * 30;
+    }
+  }
+
+  // 파티클
+  particles = particles.filter(p => {
+    p.x += p.vx; p.y += p.vy; p.vy += 0.1;
+    p.life -= p.decay;
+    return p.life > 0;
+  });
+
+  // 사망 판정: 화면 아래로 떨어짐
+  if (rabbit.y - cameraY > H + 60) {
+    die();
+  }
+}
+
+function die() {
+  state = 'dead';
+  if (score > best) best = score;
+  bestEl.textContent = '최고: ' + best;
+
+  overlay.innerHTML = `
+    <h1>🐰 게임 오버</h1>
+    <div class="final-score">점수: ${score}</div>
+    <div class="final-best">최고 기록: ${best}</div>
+    <div class="hint">탭해서 다시 시작</div>
+  `;
+  overlay.style.display = 'flex';
+  cancelAnimationFrame(frameId);
+}
+
+function startGame() {
+  score = 0;
+  cameraY = 0;
+  particles = [];
+  scoreEl.textContent = '0';
+  initPlatforms();
+  resetRabbit();
+  jump();
+  state = 'playing';
+  overlay.style.display = 'none';
+  loop();
+}
+
+// ── 렌더 ──
+function render() {
+  drawBackground();
+  drawStars();
+
+  // 파티클
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - cameraY, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // 플랫폼
+  for (const p of platforms) drawPlatform(p, cameraY);
+
+  // 토끼
+  drawRabbit(rabbit.x, rabbit.y - cameraY);
+
+  // 높이감 안개 (상단)
+  const fog = ctx.createLinearGradient(0, 0, 0, 80);
+  fog.addColorStop(0, 'rgba(15,12,41,0.7)');
+  fog.addColorStop(1, 'rgba(15,12,41,0)');
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, 0, W, 80);
+}
+
+// ── 게임 루프 ──
+function loop() {
+  update();
+  render();
+  frameId = requestAnimationFrame(loop);
+}
+
+// ── 입력 ──
+function handleInput() {
+  if (state === 'idle' || state === 'dead') {
+    startGame();
+  } else if (state === 'playing') {
+    if (rabbit.onGround) jump();
+  }
+}
+
+canvas.addEventListener('pointerdown', handleInput);
+overlay.addEventListener('pointerdown', handleInput);
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'ArrowUp') handleInput();
+});
+
+// ── 초기화 ──
+initStars();
+initPlatforms();
+
+// 아이들 렌더 (오버레이 상태에서도 배경 보이게)
+(function idleRender() {
+  if (state !== 'playing') {
+    drawBackground();
+    drawStars();
+    for (const p of platforms) drawPlatform(p, cameraY);
+    drawRabbit(rabbit.x, rabbit.y - cameraY);
+    requestAnimationFrame(idleRender);
+  }
+})();
+</script>
+</body>
+</html>

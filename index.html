@@ -72,8 +72,7 @@
     label span { font-weight: normal; font-size: 12px; opacity: 0.65; }
 
     select,
-    input[type="text"],
-    input[type="password"] {
+    input[type="text"] {
       padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -192,6 +191,8 @@
           <option value="경장">경장</option>
           <option value="경사">경사</option>
           <option value="경위">경위</option>
+          <option value="경감">경감</option>
+          <option value="경정">경정</option>
         </select>
       </div>
 
@@ -202,11 +203,6 @@
           <option value="형사과">형사과 (강력범죄 제압 및 피의자 신문 중심)</option>
           <option value="112 타격대">112 타격대 (대테러 및 작전 통제 중심)</option>
         </select>
-      </div>
-
-      <div class="form-group">
-        <label>Groq API 키 <span>(훈련 세션에만 사용되며 저장되지 않습니다)</span></label>
-        <input type="password" id="groq-key" placeholder="gsk_..." />
       </div>
 
       <button id="login-btn">FTX 훈련 입장</button>
@@ -251,9 +247,11 @@
   const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
   const GROQ_MODEL    = "llama-3.1-8b-instant";
   const POLLINATIONS  = "https://image.pollinations.ai/p/";
+  /* NOTE: GROQ_API_KEY 는 Vercel 배포 시 이 자리에 실제 키를 삽입하세요.
+     GitHub 레포에는 빈 문자열로 유지하여 시크릿 노출을 방지합니다. */
+  const GROQ_API_KEY  = "";
 
   /* ── 세션 상태 ── */
-  let groqApiKey  = "";
   let player      = { name: "", rank: "", dept: "" };
   let score       = 100;
   let turnCount   = 0;
@@ -279,18 +277,18 @@
   };
 
   /* ── DOM 참조 ── */
-  const loginZone     = document.getElementById("login-zone");
-  const simZone       = document.getElementById("simulator-zone");
-  const loginBtn      = document.getElementById("login-btn");
-  const sendBtn       = document.getElementById("send-btn");
-  const userInputEl   = document.getElementById("user-input");
-  const chatWindow    = document.getElementById("chat-window");
-  const scoreEl       = document.getElementById("current-score");
-  const stageEl       = document.getElementById("current-stage");
-  const playerInfoEl  = document.getElementById("player-info");
-  const pixelImg      = document.getElementById("pixel-img");
-  const imgLoader     = document.getElementById("img-loader");
-  const initialMsgEl  = document.getElementById("initial-ai-msg");
+  const loginZone    = document.getElementById("login-zone");
+  const simZone      = document.getElementById("simulator-zone");
+  const loginBtn     = document.getElementById("login-btn");
+  const sendBtn      = document.getElementById("send-btn");
+  const userInputEl  = document.getElementById("user-input");
+  const chatWindow   = document.getElementById("chat-window");
+  const scoreEl      = document.getElementById("current-score");
+  const stageEl      = document.getElementById("current-stage");
+  const playerInfoEl = document.getElementById("player-info");
+  const pixelImg     = document.getElementById("pixel-img");
+  const imgLoader    = document.getElementById("img-loader");
+  const initialMsgEl = document.getElementById("initial-ai-msg");
 
   /* ── 이벤트 바인딩 ── */
   loginBtn.addEventListener("click", handleLogin);
@@ -304,20 +302,17 @@
     const name = document.getElementById("user-name").value.trim();
     const rank = document.getElementById("user-rank").value;
     const dept = document.getElementById("user-dept").value;
-    const key  = document.getElementById("groq-key").value.trim();
 
     if (!name) { alert("훈련관의 성명을 입력해 주세요."); return; }
-    if (!key)  { alert("Groq API 키를 입력해 주세요."); return; }
 
-    groqApiKey = key;
     player = { name, rank, dept };
 
     loginZone.style.display  = "none";
     simZone.style.display    = "block";
     playerInfoEl.textContent = `${dept} ${name} ${rank}`;
 
-    const config      = DEPT_CONFIG[dept] || DEPT_CONFIG["지구대 파출소"];
-    const startMsg    = config.situation(rank);
+    const config   = DEPT_CONFIG[dept] || DEPT_CONFIG["지구대 파출소"];
+    const startMsg = config.situation(rank);
 
     initialMsgEl.textContent = startMsg;
     chatHistory.push({ role: "assistant", content: startMsg });
@@ -348,7 +343,7 @@
       const res = await fetch(GROQ_ENDPOINT, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${groqApiKey}`,
+          "Authorization": `Bearer ${GROQ_API_KEY}`,
           "Content-Type":  "application/json",
         },
         body: JSON.stringify({
@@ -378,7 +373,6 @@
       scoreEl.textContent = score;
       stageEl.textContent = `${turnCount + 1}단계`;
 
-      // 유저 조치 텍스트를 직접 아트 프롬프트에 반영
       const artPrompt = `south korean tactical police operation: ${text}, game sprite style, 16-bit retro pixel art, dramatic lighting`;
       generatePixelArt(artPrompt);
 
@@ -395,16 +389,16 @@
 
   /* ── Pollinations AI 픽셀아트 렌더러 ── */
   function generatePixelArt(prompt) {
-    const seed       = Math.floor(Math.random() * 99999);
-    const imageUrl   = `${POLLINATIONS}${encodeURIComponent(prompt)}?width=800&height=250&nologo=true&seed=${seed}`;
+    const seed     = Math.floor(Math.random() * 99999);
+    const imageUrl = `${POLLINATIONS}${encodeURIComponent(prompt)}?width=800&height=250&nologo=true&seed=${seed}`;
 
-    imgLoader.style.display  = "block";
-    pixelImg.style.opacity   = "0.3";
+    imgLoader.style.display = "block";
+    pixelImg.style.opacity  = "0.3";
 
     const tempImg  = new Image();
     tempImg.onload = function () {
-      pixelImg.src           = imageUrl;
-      pixelImg.style.opacity = "1";
+      pixelImg.src            = imageUrl;
+      pixelImg.style.opacity  = "1";
       imgLoader.style.display = "none";
     };
     tempImg.onerror = function () {

@@ -82,8 +82,7 @@
       font-size: 14px;
       width: 100%;
     }
-    select:focus,
-    input:focus { outline: 2px solid var(--primary); }
+    select:focus, input:focus { outline: 2px solid var(--primary); }
 
     button {
       padding: 12px 24px;
@@ -107,58 +106,54 @@
       color: var(--status-text);
       padding: 10px 14px;
       border-radius: 6px;
-      margin-bottom: 16px;
+      margin-bottom: 15px;
       font-weight: bold;
       font-size: 14px;
-      line-height: 1.6;
     }
 
     /* ── 픽셀아트 뷰포트 ── */
-    #pixel-viewport {
+    #pixel-art-zone {
       width: 100%;
       height: 220px;
-      border-radius: 8px;
       border: 1px solid var(--border);
-      margin-bottom: 14px;
-      background: #0d1117;
+      border-radius: 6px;
+      margin-bottom: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
+      background: #000;
       overflow: hidden;
       position: relative;
     }
-    #pixel-viewport img {
-      width: 100%;
+    #pixel-img {
+      width: auto;
       height: 100%;
-      object-fit: cover;
-      border-radius: 8px;
+      object-fit: contain;
       image-rendering: pixelated;
+      transition: opacity 0.5s ease;
     }
-    #pixel-loading {
+    #img-loader {
       position: absolute;
-      color: #6b7280;
-      font-size: 13px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 8px 16px;
+      border-radius: 20px;
       display: none;
     }
-    #pixel-placeholder {
-      color: #4b5563;
-      font-size: 13px;
-      text-align: center;
-      padding: 20px;
-    }
 
-    /* ── 채팅창 ── */
+    /* ── 채팅 ── */
     #chat-window {
-      height: 380px;
+      height: 320px;
       border: 1px solid var(--border);
-      padding: 14px;
+      padding: 15px;
       overflow-y: auto;
       background: var(--chat-bg);
-      border-radius: 8px;
-      margin-bottom: 14px;
+      border-radius: 6px;
+      margin-bottom: 15px;
       scroll-behavior: smooth;
     }
-
     .message {
       margin-bottom: 14px;
       padding: 10px 14px;
@@ -169,14 +164,8 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .user {
-      background: var(--user-bg);
-      color: var(--user-text);
-      margin-left: auto;
-      text-align: right;
-    }
-    .ai { background: var(--ai-bg); margin-right: auto; }
-    .ai.loading { opacity: 0.6; font-style: italic; }
+    .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; text-align: right; }
+    .ai   { background: var(--ai-bg); margin-right: auto; }
 
     .input-group { display: flex; gap: 10px; }
     .input-group input { flex: 1; }
@@ -226,29 +215,26 @@
 
   <!-- ── 시뮬레이터 존 ── -->
   <div id="simulator-zone">
-    <h2 id="sim-title">FTX 시뮬레이터</h2>
+    <h2>FTX 시뮬레이터</h2>
 
     <div class="status-box">
       훈련관: <span id="player-info"></span>&nbsp;|&nbsp;
-      단계: <span id="current-stage">1단계</span>&nbsp;|&nbsp;
+      현재 상태: <span id="current-stage">1단계: 출동 및 상황 파악</span>&nbsp;|&nbsp;
       점수: <span id="current-score">100</span>점
     </div>
 
-    <!-- 픽셀아트 상황도 뷰포트 -->
-    <div id="pixel-viewport">
-      <span id="pixel-placeholder">훈련 시작 후 상황도가 여기에 렌더링됩니다</span>
-      <span id="pixel-loading">🎨 상황도 생성 중...</span>
-      <img id="pixel-img" src="" alt="상황도" style="display:none;" />
+    <!-- 실시간 도트 그래픽 뷰포트 -->
+    <div id="pixel-art-zone">
+      <span id="img-loader">CCTV 및 현장 그래픽 동기화 중...</span>
+      <img id="pixel-img" src="" alt="FTX 현장 그래픽" />
     </div>
 
-    <div id="chat-window"></div>
+    <div id="chat-window">
+      <div id="initial-ai-msg" class="message ai"></div>
+    </div>
 
     <div class="input-group">
-      <input
-        type="text"
-        id="user-input"
-        placeholder="경찰관으로서 취할 조치를 입력하세요..."
-      />
+      <input type="text" id="user-input" placeholder="경찰관으로서 취할 조치를 입력하세요..." />
       <button id="send-btn">명령 하달</button>
     </div>
   </div>
@@ -259,45 +245,54 @@
 (function () {
   "use strict";
 
-  /* ── 설정 ── */
-  const SUPABASE_URL = "YOUR_SUPABASE_URL";
-  const SUPABASE_KEY = "YOUR_SUPABASE_KEY";
+  /* ── 인프라 설정 ── */
+  const SUPABASE_URL  = "YOUR_SUPABASE_URL";
+  const SUPABASE_KEY  = "YOUR_SUPABASE_KEY";
   const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
   const GROQ_MODEL    = "llama-3.1-8b-instant";
-  const POLLINATIONS  = "https://image.pollinations.ai/prompt/";
+  const POLLINATIONS  = "https://image.pollinations.ai/p/";
 
   /* ── 세션 상태 ── */
   let groqApiKey  = "";
   let player      = { name: "", rank: "", dept: "" };
   let score       = 100;
   let turnCount   = 0;
-  let chatHistory = [];   // 멀티턴 누적 배열
+  let chatHistory = [];
 
-  /* ── 부서별 초기 상황 ── */
-  const SITUATIONS = {
-    "지구대 파출소": (rank) =>
-      `[상황 발생] 주택가 골목길에서 흉기를 든 주취자가 난동을 부리며 주민들을 위협 중이라는 112 신고를 받고 순찰차가 현장에 선착했습니다. 피의자가 칼을 휘두르고 있습니다. ${rank} 님, 현장 초동조치는 무엇입니까?`,
-    "형사과": (rank) =>
-      `[상황 발생] 강력 사건 피의자가 흉기를 지닌 채 도주하여 인근 모텔방에 은신 중이라는 첩보를 입수하고 문 앞을 포위했습니다. 내부에서 비명소리가 들립니다. 형사과 ${rank} 님, 즉각적인 진입 및 제압 조치는 무엇입니까?`,
-    "112 타격대": (rank) =>
-      `[상황 발생] 국가 중요 시설 인근에서 미상 요주의 인물이 군사용 개조 드론을 띄워 접근시키는 대공 취약 상황이 포착되었습니다. 타격대장 ${rank} 님, 대테러 및 인프라 방호를 위한 초동조치는 무엇입니까?`,
+  /* ── 부서별 초기 상황 & 픽셀아트 프롬프트 ── */
+  const DEPT_CONFIG = {
+    "지구대 파출소": {
+      situation: (rank) =>
+        `[상황 발생] 주택가 골목길에서 흉기를 든 주취자가 난동을 부리며 주민들을 위협 중이라는 112 신고를 받고 순찰차가 현장에 선착했습니다. 피의자가 칼을 휘두르고 있습니다. ${rank} 님, 현장 초동조치는 무엇입니까?`,
+      artPrompt: "korean police car arriving at messy street alley, drunk man holding a knife, 16-bit retro pixel art, side view game style",
+    },
+    "형사과": {
+      situation: (rank) =>
+        `[상황 발생] 강력 사건 피의자가 흉기를 지닌 채 도주하여 인근 모텔방에 은신 중이라는 첩보를 입수하고 문 앞을 포위했습니다. 내부에서 비명소리가 들립니다. 형사과 ${rank} 님, 즉각적인 진입 및 제압 조치는 무엇입니까?`,
+      artPrompt: "dark motel hallway, police officers stacking up at a door, tactical entry, 16-bit retro pixel art, cinematic gaming lighting",
+    },
+    "112 타격대": {
+      situation: (rank) =>
+        `[상황 발생] 국가 중요 시설 인근에서 미상 요주의 인물이 군사용 개조 드론을 띄워 접근시키는 대공 취약 상황이 포착되었습니다. 타격대장 ${rank} 님, 대테러 및 인프라 방호를 위한 초동조치는 무엇입니까?`,
+      artPrompt: "military drone flying near national power plant facility, tactical police unit looking up with anti-drone weapon, 16-bit pixel art",
+    },
   };
 
   /* ── DOM 참조 ── */
-  const loginZone    = document.getElementById("login-zone");
-  const simZone      = document.getElementById("simulator-zone");
-  const loginBtn     = document.getElementById("login-btn");
-  const sendBtn      = document.getElementById("send-btn");
-  const userInputEl  = document.getElementById("user-input");
-  const chatWindow   = document.getElementById("chat-window");
-  const scoreEl      = document.getElementById("current-score");
-  const stageEl      = document.getElementById("current-stage");
-  const playerInfoEl = document.getElementById("player-info");
-  const pixelImg     = document.getElementById("pixel-img");
-  const pixelLoading = document.getElementById("pixel-loading");
-  const pixelPlaceholder = document.getElementById("pixel-placeholder");
+  const loginZone     = document.getElementById("login-zone");
+  const simZone       = document.getElementById("simulator-zone");
+  const loginBtn      = document.getElementById("login-btn");
+  const sendBtn       = document.getElementById("send-btn");
+  const userInputEl   = document.getElementById("user-input");
+  const chatWindow    = document.getElementById("chat-window");
+  const scoreEl       = document.getElementById("current-score");
+  const stageEl       = document.getElementById("current-stage");
+  const playerInfoEl  = document.getElementById("player-info");
+  const pixelImg      = document.getElementById("pixel-img");
+  const imgLoader     = document.getElementById("img-loader");
+  const initialMsgEl  = document.getElementById("initial-ai-msg");
 
-  /* ── 이벤트 바인딩 (인라인 onclick 완전 제거) ── */
+  /* ── 이벤트 바인딩 ── */
   loginBtn.addEventListener("click", handleLogin);
   sendBtn.addEventListener("click", sendMessage);
   userInputEl.addEventListener("keydown", function (e) {
@@ -317,15 +312,17 @@
     groqApiKey = key;
     player = { name, rank, dept };
 
-    loginZone.style.display = "none";
-    simZone.style.display   = "block";
+    loginZone.style.display  = "none";
+    simZone.style.display    = "block";
     playerInfoEl.textContent = `${dept} ${name} ${rank}`;
 
-    const startMsg = (SITUATIONS[dept] || SITUATIONS["지구대 파출소"])(rank);
-    appendMessage(startMsg, "ai");
+    const config      = DEPT_CONFIG[dept] || DEPT_CONFIG["지구대 파출소"];
+    const startMsg    = config.situation(rank);
+
+    initialMsgEl.textContent = startMsg;
     chatHistory.push({ role: "assistant", content: startMsg });
 
-    generatePixelArt(startMsg);
+    generatePixelArt(config.artPrompt);
   }
 
   /* ── Groq 멀티턴 호출 ── */
@@ -338,10 +335,15 @@
     userInputEl.value = "";
     sendBtn.disabled  = true;
 
-    const loadingDiv = appendMessage("교관이 소속 지침 및 직무집행법을 근거로 분석 중입니다...", "ai loading");
+    const loadingDiv = appendMessage("교관이 소속 지침 및 직무집행법을 근거로 분석 중입니다...", "ai");
 
     try {
-      const systemPrompt = `너는 대한민국 경찰학교의 베테랑 FTX 주관 교관이다. 피훈련자 정보 — 소속: [${player.dept}], 계급: [${player.rank}], 성명: [${player.name}]. 피훈련자의 조치가 해당 소속 부서 임무 매뉴얼과 '경찰관 직무집행법'에 적합한지 엄격히 심사하라. 소속 부서에 특화된 피드백을 제공하고 다음 상황을 고도화하여 전개하라. 답변은 반드시 한국어로, 3줄 이내로 간결하게 작성하라.`;
+      const systemPrompt =
+        `너는 대한민국 경찰학교의 베테랑 FTX 주관 교관이다. ` +
+        `피훈련자 — 소속: [${player.dept}], 계급: [${player.rank}], 성명: [${player.name}]. ` +
+        `피훈련자의 조치가 소속 부서 임무 매뉴얼 및 '경찰관 직무집행법'에 적합한지 엄격히 심사하고, ` +
+        `소속 부서에 특화된 피드백과 다음 상황을 이어서 전개하라. ` +
+        `답변은 한국어로 3줄 이내로 명확하게 작성하라.`;
 
       const res = await fetch(GROQ_ENDPOINT, {
         method: "POST",
@@ -363,8 +365,8 @@
         throw new Error(errData?.error?.message || `HTTP ${res.status}`);
       }
 
-      const data      = await res.json();
-      const aiReply   = data.choices[0].message.content;
+      const data    = await res.json();
+      const aiReply = data.choices[0].message.content;
 
       chatHistory.push({ role: "assistant", content: aiReply });
 
@@ -376,12 +378,14 @@
       scoreEl.textContent = score;
       stageEl.textContent = `${turnCount + 1}단계`;
 
-      generatePixelArt(aiReply);
+      // 유저 조치 텍스트를 직접 아트 프롬프트에 반영
+      const artPrompt = `south korean tactical police operation: ${text}, game sprite style, 16-bit retro pixel art, dramatic lighting`;
+      generatePixelArt(artPrompt);
+
       saveToSupabase(`${player.dept}_${player.name}`, score);
 
     } catch (err) {
       console.error("[Groq 오류]", err);
-      loadingDiv.className = "message ai";
       loadingDiv.textContent = `통신 에러: ${err.message}`;
     } finally {
       sendBtn.disabled = false;
@@ -390,49 +394,24 @@
   }
 
   /* ── Pollinations AI 픽셀아트 렌더러 ── */
-  function generatePixelArt(situationText) {
-    const keywords = extractKeywords(situationText);
-    const prompt   = encodeURIComponent(
-      `Korean police operation scene, ${keywords}, 16-bit retro pixel art, top-down view, night, dramatic lighting, detailed`
-    );
-    const url = `${POLLINATIONS}${prompt}?width=768&height=220&nologo=true&seed=${Date.now()}`;
+  function generatePixelArt(prompt) {
+    const seed       = Math.floor(Math.random() * 99999);
+    const imageUrl   = `${POLLINATIONS}${encodeURIComponent(prompt)}?width=800&height=250&nologo=true&seed=${seed}`;
 
-    pixelPlaceholder.style.display = "none";
-    pixelLoading.style.display     = "block";
-    pixelImg.style.display         = "none";
+    imgLoader.style.display  = "block";
+    pixelImg.style.opacity   = "0.3";
 
-    const tempImg = new Image();
+    const tempImg  = new Image();
     tempImg.onload = function () {
-      pixelImg.src           = url;
-      pixelImg.style.display = "block";
-      pixelLoading.style.display = "none";
+      pixelImg.src           = imageUrl;
+      pixelImg.style.opacity = "1";
+      imgLoader.style.display = "none";
     };
     tempImg.onerror = function () {
-      pixelLoading.style.display    = "none";
-      pixelPlaceholder.style.display = "block";
-      pixelPlaceholder.textContent   = "상황도 생성 실패 (네트워크 확인)";
+      imgLoader.style.display = "none";
+      pixelImg.style.opacity  = "1";
     };
-    tempImg.src = url;
-  }
-
-  function extractKeywords(text) {
-    const map = {
-      "흉기": "knife threat",
-      "드론": "drone threat",
-      "모텔": "motel raid",
-      "골목": "alley standoff",
-      "포위": "police surrounding",
-      "진입": "forced entry",
-      "피의자": "suspect",
-      "대테러": "anti-terrorism",
-      "타격대": "tactical unit",
-      "현장": "crime scene",
-    };
-    const found = [];
-    for (const [ko, en] of Object.entries(map)) {
-      if (text.includes(ko)) found.push(en);
-    }
-    return found.length ? found.join(", ") : "police patrol, urban street";
+    tempImg.src = imageUrl;
   }
 
   /* ── Supabase 저장 ── */

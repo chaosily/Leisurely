@@ -6,36 +6,24 @@
   <title>경찰 초동조치 FTX 시뮬레이터</title>
   <style>
     :root {
-      --bg: #f0f2f5;
-      --card: #ffffff;
-      --text: #1f2937;
-      --primary: #1e3a8a;
-      --primary-h: #172554;
-      --status-bg: #e0f2fe;
-      --status-text: #0369a1;
-      --chat-bg: #fafafa;
-      --border: #dddddd;
-      --user-bg: #dbeafe;
-      --user-text: #1e40af;
-      --ai-bg: #f3f4f6;
-      --input-bg: #ffffff;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #111827;
-        --card: #1f2937;
-        --text: #f9fafb;
-        --primary: #3b82f6;
-        --primary-h: #60a5fa;
-        --status-bg: #1e3a8a;
-        --status-text: #93c5fd;
-        --chat-bg: #111827;
-        --border: #4b5563;
-        --user-bg: #1e3a8a;
-        --user-text: #eff6ff;
-        --ai-bg: #374151;
-        --input-bg: #1f2937;
-      }
+      --bg: #111827;
+      --card: #1f2937;
+      --text: #f9fafb;
+      --primary: #3b82f6;
+      --primary-h: #60a5fa;
+      --status-bg: #1e3a8a;
+      --status-text: #93c5fd;
+      --chat-bg: #111827;
+      --border: #4b5563;
+      --user-bg: #1e3a8a;
+      --user-text: #eff6ff;
+      --ai-bg: #374151;
+      --input-bg: #1f2937;
+
+      --accent-dialogue: #50e3c2;
+      --accent-score: #10b981;
+      --accent-penalty: #ef4444;
+      --accent-options: #fbbf24;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -45,11 +33,10 @@
       background: var(--bg);
       color: var(--text);
       padding: 20px;
-      transition: background 0.3s;
     }
 
     .container {
-      max-width: 800px;
+      max-width: 850px;
       margin: 0 auto;
       background: var(--card);
       padding: 24px;
@@ -71,8 +58,7 @@
     label { font-weight: bold; font-size: 14px; }
     label span { font-weight: normal; font-size: 12px; opacity: 0.65; }
 
-    select,
-    input[type="text"] {
+    select, input[type="text"] {
       padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -91,60 +77,49 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
-      font-size: 15px;
+      font-size: 14px;
       transition: background 0.2s;
     }
     button:hover { background: var(--primary-h); }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── 시뮬레이터 ── */
+    /* ── 시뮬레이터 존 ── */
     #simulator-zone { display: none; }
 
     .status-box {
       background: var(--status-bg);
       color: var(--status-text);
-      padding: 10px 14px;
+      padding: 12px 16px;
       border-radius: 6px;
       margin-bottom: 15px;
       font-weight: bold;
       font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    /* ── 픽셀아트 뷰포트 ── */
+    /* ── 그래픽 플레이스홀더 영역 ── */
     #pixel-art-zone {
       width: 100%;
-      height: 220px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      height: 50px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
       margin-bottom: 15px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #000;
-      overflow: hidden;
-      position: relative;
-    }
-    #pixel-img {
-      width: auto;
-      height: 100%;
-      object-fit: contain;
-      image-rendering: pixelated;
-      transition: opacity 0.5s ease;
+      background: #111;
     }
     #img-loader {
-      position: absolute;
-      color: #fff;
+      color: var(--status-text);
+      font-size: 12px;
       font-weight: bold;
-      font-size: 14px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 8px 16px;
-      border-radius: 20px;
-      display: none;
     }
 
-    /* ── 채팅 ── */
+    /* ── 챗봇 타임라인 피드 ── */
     #chat-window {
-      height: 320px;
+      height: 380px;
       border: 1px solid var(--border);
       padding: 15px;
       overflow-y: auto;
@@ -154,20 +129,75 @@
       scroll-behavior: smooth;
     }
     .message {
-      margin-bottom: 14px;
-      padding: 10px 14px;
+      margin-bottom: 16px;
+      padding: 12px 16px;
       border-radius: 8px;
-      max-width: 82%;
-      line-height: 1.6;
-      font-size: 14px;
+      max-width: 88%;
+      line-height: 1.7;
+      font-size: 14.5px;
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; text-align: right; }
+    .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; }
     .ai   { background: var(--ai-bg); margin-right: auto; }
 
-    .input-group { display: flex; gap: 10px; }
-    .input-group input { flex: 1; }
+    .story-dialogue { color: var(--accent-dialogue); font-weight: bold; margin-bottom: 6px; display: block; }
+    .story-desc     { color: #e5e7eb; display: block; margin-bottom: 8px; }
+    .story-score    { color: var(--accent-score); font-weight: bold; font-size: 13.5px; display: block; margin-bottom: 6px; }
+    .story-penalty  { color: var(--accent-penalty); font-weight: bold; font-size: 13.5px; display: block; margin-bottom: 6px; }
+    .story-options  { color: var(--accent-options); font-weight: bold; font-size: 13.5px; display: block; border-top: 1px dashed #4b5563; padding-top: 8px; margin-top: 8px; }
+
+    /* ── 이원화 입력 패널 ── */
+    .dual-input-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .input-label {
+      width: 80px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #9ca3af;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .radio-toggle-btn {
+      padding: 10px 14px;
+      background: #374151;
+      border: 1px solid var(--border);
+      color: #9ca3af;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 6px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .radio-toggle-btn.active {
+      background: #065f46;
+      border-color: var(--accent-dialogue);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(80, 227, 194, 0.4);
+    }
+
+    .dual-input-panel input { flex: 1; }
+    .btn-action-trigger {
+      padding: 10px 18px;
+      font-size: 13px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -178,7 +208,6 @@
   <div id="login-zone">
     <h2>경찰 초동조치 시뮬레이터 — 로그인</h2>
     <div class="login-box">
-
       <div class="form-group">
         <label>성명</label>
         <input type="text" id="user-name" placeholder="홍길동" />
@@ -197,15 +226,15 @@
       </div>
 
       <div class="form-group">
-        <label>소속 부서 <span>(부서에 따라 상황과 평가 기준이 변경됩니다)</span></label>
+        <label>소속 부서 <span>(시나리오 분기)</span></label>
         <select id="user-dept">
-          <option value="지구대 파출소">지구대·파출소 (현장 보존 및 긴급 제지 중심)</option>
-          <option value="형사과">형사과 (강력범죄 제압 및 피의자 신문 중심)</option>
-          <option value="112 타격대">112 타격대 (대테러 및 작전 통제 중심)</option>
+          <option value="지구대 파출소">지구대·파출소 (현장 제지 중심)</option>
+          <option value="형사과">형사과 (강력범죄 제압 중심)</option>
+          <option value="112 타격대">112 타격대 (대테러 작전 통제 중심)</option>
         </select>
       </div>
 
-      <button id="login-btn">FTX 훈련 입장</button>
+      <button id="login-btn">FTX 시뮬레이션 시작</button>
     </div>
   </div>
 
@@ -214,99 +243,115 @@
     <h2>FTX 시뮬레이터</h2>
 
     <div class="status-box">
-      훈련관: <span id="player-info"></span>&nbsp;|&nbsp;
-      현재 상태: <span id="current-stage">1단계: 출동 및 상황 파악</span>&nbsp;|&nbsp;
-      점수: <span id="current-score">100</span>점
+      <div>훈련관: <span id="player-info"></span></div>
+      <div>현재 진행: <span id="current-stage">1 / 10 턴</span></div>
+      <div>훈련 점수: <span id="current-score" style="color: var(--accent-score);">0</span> 점</div>
     </div>
 
-    <!-- 실시간 도트 그래픽 뷰포트 -->
     <div id="pixel-art-zone">
-      <span id="img-loader">CCTV 및 현장 그래픽 동기화 중...</span>
-      <img id="pixel-img" src="" alt="FTX 현장 그래픽" />
+      <span id="img-loader">[ FTX 전술 무전 수신기 연동 안정화 완료 ]</span>
     </div>
 
     <div id="chat-window">
       <div id="initial-ai-msg" class="message ai"></div>
     </div>
 
-    <div class="input-group">
-      <input type="text" id="user-input" placeholder="경찰관으로서 취할 조치를 입력하세요..." />
-      <button id="send-btn">명령 하달</button>
-    </div>
-  </div>
+    <div class="dual-input-panel">
+      <div class="input-row">
+        <div class="input-label">🗣️ 대화/무전</div>
+        <button id="radio-toggle" class="radio-toggle-btn">무전 OFF</button>
+        <input type="text" id="chat-input" placeholder="현장 인물에게 할 대사를 입력하거나 상황실 보고 내용을 입력하세요..." />
+        <button id="send-chat-btn" class="btn-action-trigger">전송</button>
+      </div>
 
+      <div class="input-row">
+        <div class="input-label">🛡️ 현장조치</div>
+        <input type="text" id="action-input" placeholder="삼단봉 전개, 테이저건 거치 등 물리적/행동 전술 조치를 입력하세요..." />
+        <button id="send-action-btn" class="btn-action-trigger" style="background: #2563eb;">집행</button>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
 (function () {
   "use strict";
 
-  /* ── 인프라 설정 ── */
-  const SUPABASE_URL  = "YOUR_SUPABASE_URL";
-  const SUPABASE_KEY  = "YOUR_SUPABASE_KEY";
+  const SUPABASE_URL  = "https://wmddgsghfbnqtotyfjxt.supabase.co";
+  const SUPABASE_KEY  = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
   const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
   const GROQ_MODEL    = "llama-3.1-8b-instant";
-  const POLLINATIONS  = "https://image.pollinations.ai/p/";
-  /* NOTE: GROQ_API_KEY 는 Vercel 배포 시 이 자리에 실제 키를 삽입하세요.
-     GitHub 레포에는 빈 문자열로 유지하여 시크릿 노출을 방지합니다. */
-  const GROQ_API_KEY  = "";
+  const GROQ_API_KEY  = "GROQ_KEY_PLACEHOLDER";
 
-  /* ── 세션 상태 ── */
   let player      = { name: "", rank: "", dept: "" };
-  let score       = 100;
-  let turnCount   = 0;
+  let score       = 0;
+  let turnCount   = 1;
   let chatHistory = [];
+  let isRadioMode = false;
 
-  /* ── 부서별 초기 상황 & 픽셀아트 프롬프트 ── */
   const DEPT_CONFIG = {
     "지구대 파출소": {
       situation: (rank) =>
-        `[상황 발생] 주택가 골목길에서 흉기를 든 주취자가 난동을 부리며 주민들을 위협 중이라는 112 신고를 받고 순찰차가 현장에 선착했습니다. 피의자가 칼을 휘두르고 있습니다. ${rank} 님, 현장 초동조치는 무엇입니까?`,
-      artPrompt: "korean police car arriving at messy street alley, drunk man holding a knife, 16-bit retro pixel art, side view game style",
+        `💬 현장 상황 | "어어, 저리 가! 가까이 오면 다 찔러 버린다!"\n\n` +
+        `📝 상황 묘사 | 주택가 골목길에서 흉기를 든 주취자가 난동을 부리며 주민들을 위협 중입니다. 순찰차가 선착한 상태에서 피의자가 피 묻은 칼을 쥐고 다가옵니다. ${rank} 님, 첫 번째 전술 조치나 대화 지시를 내려주십시오.\n\n` +
+        `🎯 추천 선택지 | 1. 테이저건 조준 후 안전거리 유지 조치 / 2. 대화 입력창을 켜고 자극하지 않는 설득 시도 / 3. 무전 토글을 켜고 상황실에 112 추가 기동 지원 요청`,
     },
     "형사과": {
       situation: (rank) =>
-        `[상황 발생] 강력 사건 피의자가 흉기를 지닌 채 도주하여 인근 모텔방에 은신 중이라는 첩보를 입수하고 문 앞을 포위했습니다. 내부에서 비명소리가 들립니다. 형사과 ${rank} 님, 즉각적인 진입 및 제압 조치는 무엇입니까?`,
-      artPrompt: "dark motel hallway, police officers stacking up at a door, tactical entry, 16-bit retro pixel art, cinematic gaming lighting",
+        `💬 현장 상황 | "안에 누군가 비명을 질렀어요! 빨리 문 부수고 들어가야 해요!"\n\n` +
+        `📝 상황 묘사 | 강력 피의자가 은신 중인 모텔방 앞에 도착했습니다. 안에서 둔탁한 소리와 인질의 비명이 터져 나옵니다. 형사과 ${rank} 님, 문 앞 포위 상황에서 어떤 조치를 발동하시겠습니까?\n\n` +
+        `🎯 추천 선택지 | 1. 조치창에 문을 박차고 즉각 진입 기동 지시 / 2. 대화창으로 내부 피의자에게 인질 해방 유도 협상 대사 전달 / 3. 무전 모드로 소방 구급대 긴급 강제 개방 및 구급 지원 요청`,
     },
     "112 타격대": {
       situation: (rank) =>
-        `[상황 발생] 국가 중요 시설 인근에서 미상 요주의 인물이 군사용 개조 드론을 띄워 접근시키는 대공 취약 상황이 포착되었습니다. 타격대장 ${rank} 님, 대테러 및 인프라 방호를 위한 초동조치는 무엇입니까?`,
-      artPrompt: "military drone flying near national power plant facility, tactical police unit looking up with anti-drone weapon, 16-bit pixel art",
+        `💬 상황실 무전 | "비행 금지 구역 내 정체불명의 개조 드론 탐지. 전원 대공 요격 및 조종자 수색 태세 돌입하라."\n\n` +
+        `📝 상황 묘사 | 국가 중요 시설 경계 구역 내로 정찰 목적이 의심되는 미상 드론이 고도를 낮춰 진입했습니다. 조종자로 추정되는 인물이 숲속 내부로 은밀히 도주하는 징후가 잡혔습니다. 타격대 ${rank} 님, 조치를 내려주십시오.\n\n` +
+        `🎯 추천 선택지 | 1. 조치창에 안티드론 재밍건 전개 및 가동 명령 / 2. 무전 모드로 인근 대대 및 소속 기동대에 주변 락다운 조치 무전 보고 / 3. 대화창으로 주변 경계 인원들에게 긴급 도보 수색 명령 전달`,
     },
   };
 
-  /* ── DOM 참조 ── */
-  const loginZone    = document.getElementById("login-zone");
-  const simZone      = document.getElementById("simulator-zone");
-  const loginBtn     = document.getElementById("login-btn");
-  const sendBtn      = document.getElementById("send-btn");
-  const userInputEl  = document.getElementById("user-input");
-  const chatWindow   = document.getElementById("chat-window");
-  const scoreEl      = document.getElementById("current-score");
-  const stageEl      = document.getElementById("current-stage");
-  const playerInfoEl = document.getElementById("player-info");
-  const pixelImg     = document.getElementById("pixel-img");
-  const imgLoader    = document.getElementById("img-loader");
-  const initialMsgEl = document.getElementById("initial-ai-msg");
+  const loginZone      = document.getElementById("login-zone");
+  const simZone        = document.getElementById("simulator-zone");
+  const loginBtn       = document.getElementById("login-btn");
+  const sendChatBtn    = document.getElementById("send-chat-btn");
+  const sendActionBtn  = document.getElementById("send-action-btn");
+  const chatInputEl    = document.getElementById("chat-input");
+  const actionInputEl  = document.getElementById("action-input");
+  const radioToggleBtn = document.getElementById("radio-toggle");
+  const chatWindow     = document.getElementById("chat-window");
+  const scoreEl        = document.getElementById("current-score");
+  const stageEl        = document.getElementById("current-stage");
+  const playerInfoEl   = document.getElementById("player-info");
+  const initialMsgEl   = document.getElementById("initial-ai-msg");
 
-  /* ── 이벤트 바인딩 ── */
   loginBtn.addEventListener("click", handleLogin);
-  sendBtn.addEventListener("click", sendMessage);
-  userInputEl.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") sendMessage();
+  sendChatBtn.addEventListener("click", () => handleInputTransmission("chat"));
+  sendActionBtn.addEventListener("click", () => handleInputTransmission("action"));
+  chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleInputTransmission("chat"); });
+  actionInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleInputTransmission("action"); });
+
+  radioToggleBtn.addEventListener("click", () => {
+    isRadioMode = !isRadioMode;
+    if (isRadioMode) {
+      radioToggleBtn.classList.add("active");
+      radioToggleBtn.textContent = "무전 ON";
+      chatInputEl.placeholder = "[무전 모드 활성화] 상황실이나 동료 경찰관에게 하달할 무전 내용을 입력하세요...";
+    } else {
+      radioToggleBtn.classList.remove("active");
+      radioToggleBtn.textContent = "무전 OFF";
+      chatInputEl.placeholder = "현장 인물에게 할 대사를 입력하거나 상황실 보고 내용을 입력하세요...";
+    }
   });
 
-  /* ── 로그인 처리 ── */
   function handleLogin() {
     const name = document.getElementById("user-name").value.trim();
     const rank = document.getElementById("user-rank").value;
     const dept = document.getElementById("user-dept").value;
 
-    if (!name) { alert("훈련관의 성명을 입력해 주세요."); return; }
+    if (!name) { alert("성명을 정확히 기재해 주십시오."); return; }
 
     player = { name, rank, dept };
-
     loginZone.style.display  = "none";
     simZone.style.display    = "block";
     playerInfoEl.textContent = `${dept} ${name} ${rank}`;
@@ -314,31 +359,91 @@
     const config   = DEPT_CONFIG[dept] || DEPT_CONFIG["지구대 파출소"];
     const startMsg = config.situation(rank);
 
-    initialMsgEl.textContent = startMsg;
+    formatAndAppendMessage(startMsg, "ai");
     chatHistory.push({ role: "assistant", content: startMsg });
-
-    generatePixelArt(config.artPrompt);
   }
 
-  /* ── Groq 멀티턴 호출 ── */
-  async function sendMessage() {
-    const text = userInputEl.value.trim();
-    if (!text) return;
-
-    appendMessage(text, "user");
-    chatHistory.push({ role: "user", content: text });
-    userInputEl.value = "";
-    sendBtn.disabled  = true;
-
-    const loadingDiv = appendMessage("교관이 소속 지침 및 직무집행법을 근거로 분석 중입니다...", "ai");
+  async function fetchLawContext(userText) {
+    let keyword = "경찰관 직무집행법";
+    if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총")) keyword = "무기 사용";
+    if (userText.includes("테이저") || userText.includes("삼단봉") || userText.includes("수갑")) keyword = "경찰장구";
+    if (userText.includes("진입") || userText.includes("수색") || userText.includes("모텔")) keyword = "출입";
+    if (userText.includes("무전") || userText.includes("보고") || userText.includes("지원")) keyword = "작전통제";
 
     try {
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/law-rag`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({ keyword }),
+      });
+      if (!response.ok) return "";
+      const result = await response.json();
+      if (result.success && result.data) {
+        const lawList = result.data?.LawSearch?.law;
+        if (lawList && lawList.length > 0) {
+          let lawArticles = "";
+          const maxArticles = Math.min(lawList.length, 2);
+          for (let i = 0; i < maxArticles; i++) {
+            const lawName = lawList[i]["법령명칭"] || lawList[i]["법령명"] || "경찰관 직무집행법";
+            const content = lawList[i]["조문내용"] || lawList[i]["본문"] || "내용 생략";
+            lawArticles += `\n[${lawName}] ${content}`;
+          }
+          return `\n\n[실시간 법제처 국가법령 지침]:\n${lawArticles}`;
+        }
+      }
+      return "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  async function handleInputTransmission(inputType) {
+    let text   = "";
+    let prefix = "";
+
+    if (inputType === "chat") {
+      text = chatInputEl.value.trim();
+      if (!text) return;
+      prefix = (isRadioMode || text.startsWith("/무전")) ? "⚡ [무전 전송] " : "🗣️ [현장 발언] ";
+      if (text.startsWith("/무전")) text = text.replace("/무전", "").trim();
+      chatInputEl.value = "";
+    } else {
+      text = actionInputEl.value.trim();
+      if (!text) return;
+      prefix = "🛡️ [현장 전술 조치] ";
+      actionInputEl.value = "";
+    }
+
+    const fullUserText = prefix + text;
+    appendMessage(fullUserText, "user");
+    chatHistory.push({ role: "user", content: fullUserText });
+
+    sendChatBtn.disabled  = true;
+    sendActionBtn.disabled = true;
+    const loadingDiv = appendMessage("상황 분석 및 교관 피드백 빌드 중...", "ai");
+
+    try {
+      const lawContext = await fetchLawContext(text);
+
       const systemPrompt =
-        `너는 대한민국 경찰학교의 베테랑 FTX 주관 교관이다. ` +
-        `피훈련자 — 소속: [${player.dept}], 계급: [${player.rank}], 성명: [${player.name}]. ` +
-        `피훈련자의 조치가 소속 부서 임무 매뉴얼 및 '경찰관 직무집행법'에 적합한지 엄격히 심사하고, ` +
-        `소속 부서에 특화된 피드백과 다음 상황을 이어서 전개하라. ` +
-        `답변은 한국어로 3줄 이내로 명확하게 작성하라.`;
+        `너는 크랙(CRACK) 플랫폼의 텍스트 기반 인터랙티브 스토리 경찰 시뮬레이션의 마스터 오퍼레이터다.\n` +
+        `피훈련자 정보: 소속 [${player.dept}], 계급 [${player.rank}], 성명 [${player.name}], 현재 진행 [${turnCount} / 10 턴].\n\n` +
+        `[입력 분석 규칙]\n` +
+        `- '⚡ [무전 전송]' 규격: 상황실/무전망 반응을 대사로 출력하라.\n` +
+        `- '🛡️ [현장 전술 조치]' 규격: 소지 장구(3.8권총, 테이저건, 삼단봉, 수갑) 활용 여부 및 물리력 집행 적정성을 판단하라.\n\n` +
+        `[출력 마크업 약속]\n` +
+        `반드시 아래 분류 코드로 줄바꿈 처리하여 응답하라:\n` +
+        `- 💬 현장 상황 | (무전음성, 피의자 대사, 혹은 상황실 지시 대사)\n` +
+        `- 📝 상황 묘사 | (유저 조치로 인해 바뀐 현장 상태 지문)\n` +
+        `- 🟢 점수 변동 | (칭찬 요약 및 획득 점수 기재. 예: 정당한 테이저 거치로 +10점)\n` +
+        `- 🔴 감점 내역 | (법령 위반, 과잉 진압, 보고 누락 시 감점 사유. 예: 미란다 원칙 누락으로 -10점. 없으면 생략)\n` +
+        `- 🎯 추천 선택지 | (다음 턴 유기적 전술 옵션 2~3개 제안)\n\n` +
+        `[엔딩 조건]\n` +
+        `${turnCount}턴 현재. 10턴 도달 시 누적 점수 기준 최종 성적표(특진 엔딩, 징계 엔딩, 도주 실패 엔딩 등)를 발행하고 마감하라.\n` +
+        `${lawContext}`;
 
       const res = await fetch(GROQ_ENDPOINT, {
         method: "POST",
@@ -348,10 +453,7 @@
         },
         body: JSON.stringify({
           model: GROQ_MODEL,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...chatHistory,
-          ],
+          messages: [{ role: "system", content: systemPrompt }, ...chatHistory],
         }),
       });
 
@@ -364,70 +466,80 @@
       const aiReply = data.choices[0].message.content;
 
       chatHistory.push({ role: "assistant", content: aiReply });
-
       loadingDiv.remove();
-      appendMessage(aiReply, "ai");
+      formatAndAppendMessage(aiReply, "ai");
 
-      turnCount++;
-      score = Math.max(0, score - 5);
+      // 정규식으로 AI 응답의 실제 ±숫자 파싱
+      const gainMatch = aiReply.match(/🟢[^\n]*?\+(\d+)점/);
+      const lossMatch = aiReply.match(/🔴[^\n]*?-(\d+)점/);
+      if (gainMatch) score += parseInt(gainMatch[1], 10);
+      if (lossMatch) score  = Math.max(0, score - parseInt(lossMatch[1], 10));
+
       scoreEl.textContent = score;
-      stageEl.textContent = `${turnCount + 1}단계`;
+      turnCount++;
 
-      const artPrompt = `south korean tactical police operation: ${text}, game sprite style, 16-bit retro pixel art, dramatic lighting`;
-      generatePixelArt(artPrompt);
+      if (turnCount > 10) {
+        stageEl.textContent     = "훈련 종료 (FTX 마감)";
+        sendChatBtn.disabled    = true;
+        sendActionBtn.disabled  = true;
+        chatInputEl.disabled    = true;
+        actionInputEl.disabled  = true;
+        chatInputEl.placeholder = "모든 훈련 턴이 종료되었습니다. 최종 결과를 확인하십시오.";
+      } else {
+        stageEl.textContent = `${turnCount} / 10 턴`;
+      }
 
       saveToSupabase(`${player.dept}_${player.name}`, score);
 
-    } catch (err) {
-      console.error("[Groq 오류]", err);
-      loadingDiv.textContent = `통신 에러: ${err.message}`;
-    } finally {
-      sendBtn.disabled = false;
-      userInputEl.focus();
-    }
-  }
-
-  /* ── Pollinations AI 픽셀아트 렌더러 ── */
-  function generatePixelArt(prompt) {
-    const seed     = Math.floor(Math.random() * 99999);
-    const imageUrl = `${POLLINATIONS}${encodeURIComponent(prompt)}?width=800&height=250&nologo=true&seed=${seed}`;
-
-    imgLoader.style.display = "block";
-    pixelImg.style.opacity  = "0.3";
-
-    const tempImg  = new Image();
-    tempImg.onload = function () {
-      pixelImg.src            = imageUrl;
-      pixelImg.style.opacity  = "1";
-      imgLoader.style.display = "none";
-    };
-    tempImg.onerror = function () {
-      imgLoader.style.display = "none";
-      pixelImg.style.opacity  = "1";
-    };
-    tempImg.src = imageUrl;
-  }
-
-  /* ── Supabase 저장 ── */
-  async function saveToSupabase(stageInfo, currentScore) {
-    if (SUPABASE_URL === "YOUR_SUPABASE_URL") return;
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/user_status`, {
-        method: "POST",
-        headers: {
-          "apikey":        SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-          "Content-Type":  "application/json",
-          "Prefer":        "return=representation",
-        },
-        body: JSON.stringify({ stage: stageInfo, score: currentScore }),
-      });
     } catch (e) {
-      console.warn("[Supabase 저장 실패]", e.message);
+      loadingDiv.textContent = `파이프라인 통신 지연: ${e.message}`;
+    } finally {
+      if (turnCount <= 10) {
+        sendChatBtn.disabled   = false;
+        sendActionBtn.disabled = false;
+      }
     }
   }
 
-  /* ── 채팅 메시지 DOM 추가 ── */
+  function formatAndAppendMessage(rawText, classes) {
+    if (classes === "user") {
+      appendMessage(rawText, "user");
+      return;
+    }
+
+    const div = document.createElement("div");
+    div.className = `message ${classes}`;
+
+    rawText.split("\n").forEach(function (line) {
+      if (!line.trim()) return;
+      const span = document.createElement("span");
+      if (line.startsWith("💬")) {
+        span.className = "story-dialogue";
+      } else if (line.startsWith("📝")) {
+        span.className = "story-desc";
+      } else if (line.startsWith("🟢")) {
+        span.className = "story-score";
+      } else if (line.startsWith("🔴")) {
+        span.className = "story-penalty";
+      } else if (line.startsWith("🎯")) {
+        span.className = "story-options";
+      } else {
+        const p = document.createElement("p");
+        p.textContent = line;
+        p.style.marginBottom = "6px";
+        div.appendChild(p);
+        return;
+      }
+      span.textContent = line;
+      div.appendChild(span);
+    });
+
+    if (div.children.length === 0) div.textContent = rawText;
+
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
   function appendMessage(text, classes) {
     const div = document.createElement("div");
     div.className   = `message ${classes}`;
@@ -435,6 +547,20 @@
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return div;
+  }
+
+  async function saveToSupabase(stageInfo, currentScore) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/user_status`, {
+        method: "POST",
+        headers: {
+          "apikey":        SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type":  "application/json",
+        },
+        body: JSON.stringify({ stage: stageInfo, score: currentScore }),
+      });
+    } catch (e) {}
   }
 
 })();

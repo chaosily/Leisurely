@@ -565,22 +565,32 @@
 
   async function fetchLawContext(userText) {
     let keyword = "경찰관 직무집행법";
-    if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총")) keyword = "무기 사용";
-    if (userText.includes("테이저") || userText.includes("삼단봉")) keyword = "경찰장구";
+    if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총") || userText.includes("무기")) keyword = "무기";
+    else if (userText.includes("테이저") || userText.includes("삼단봉") || userText.includes("수갑")) keyword = "경찰장구";
+    else if (userText.includes("위험") || userText.includes("대피") || userText.includes("피난")) keyword = "위험";
+    else if (userText.includes("불심") || userText.includes("검문") || userText.includes("신분")) keyword = "불심검문";
+    else if (userText.includes("과잉") || userText.includes("비례") || userText.includes("위법")) keyword = "과잉";
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
       const res = await fetch(`${SUPABASE_URL}/functions/v1/law-rag`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
-        body: JSON.stringify({ keyword })
+        body: JSON.stringify({ keyword }),
+        signal: controller.signal
       });
-      if (!res.ok) return "";
+      clearTimeout(timer);
+      if (!res.ok) { console.warn("law-rag 응답 오류:", res.status); return ""; }
       const result = await res.json();
       if (result.success && result.data?.LawSearch?.law?.[0]) {
         const law = result.data.LawSearch.law[0];
-        return `\n\n[관련 법령]: [${law["법령명칭"] || "경찰관 직무집행법"}] ${law["조문내용"] || ""}`;
+        return `\n\n[관련 법령 - ${law["법령명칭"] || "경찰관 직무집행법"}]: ${law["조문내용"] || ""}`;
       }
       return "";
-    } catch { return ""; }
+    } catch (e) {
+      if (e.name !== "AbortError") console.warn("law-rag 오류:", e.message);
+      return "";
+    }
   }
 
   window.selectOptionOption = function(optionText, isAction) {

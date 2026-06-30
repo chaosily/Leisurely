@@ -80,12 +80,22 @@
     .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; }
     .ai { background: var(--ai-bg); margin-right: auto; }
 
-    .story-dialogue { color: var(--accent-dialogue); font-weight: bold; margin-bottom: 6px; display: block; }
+    .section-label { display: inline-block; font-weight: bold; font-size: 12px; padding: 1px 7px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+    .story-dialogue { color: var(--accent-dialogue); font-weight: normal; margin-bottom: 2px; display: block; }
+    .story-dialogue .section-label { background: rgba(80,227,194,0.18); color: var(--accent-dialogue); }
+    .story-dialogue-cont { color: var(--accent-dialogue); font-weight: normal; display: block; margin-bottom: 2px; padding-left: 4px; }
     .story-desc { color: #e5e7eb; display: block; margin-bottom: 8px; }
-    .story-score { color: var(--accent-score); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
-    .story-penalty { color: var(--accent-penalty); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
-    .story-stat-change { color: var(--accent-stat-change); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
-    .system-alert { color: #ff4545; font-weight: bold; border-left: 3px solid #ff4545; padding-left: 8px; margin: 6px 0; display: block; }
+    .story-desc .section-label { background: rgba(229,231,235,0.15); color: #e5e7eb; }
+    .story-score { color: var(--accent-score); font-size: 13px; display: block; margin-bottom: 4px; }
+    .story-score .section-label { background: rgba(16,185,129,0.2); color: var(--accent-score); }
+    .story-penalty { color: var(--accent-penalty); font-size: 13px; display: block; margin-bottom: 4px; }
+    .story-penalty .section-label { background: rgba(239,68,68,0.2); color: var(--accent-penalty); }
+    .story-stat-change { color: var(--accent-stat-change); font-size: 13px; display: block; margin-bottom: 4px; }
+    .story-stat-change .section-label { background: rgba(255,120,31,0.2); color: var(--accent-stat-change); }
+    .radio-comms { color: #fbbf24; font-size: 13px; border-left: 3px solid #fbbf24; padding-left: 8px; margin: 6px 0; display: block; }
+    .radio-comms .section-label { background: rgba(251,191,36,0.18); color: #fbbf24; }
+    .civilian-alert { color: #a78bfa; font-size: 13px; border-left: 3px solid #a78bfa; padding-left: 8px; margin: 6px 0; display: block; }
+    .civilian-alert .section-label { background: rgba(167,139,250,0.18); color: #a78bfa; }
 
     .interactive-options-container { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
     .option-btn { background: #1f2937; border: 1px solid var(--accent-options); color: #f3f4f6; padding: 10px 14px; border-radius: 6px; text-align: left; font-size: 13px; cursor: pointer; transition: all 0.2s; }
@@ -266,9 +276,13 @@
   };
 
   const SUSPECT_POOL = [
-    { type: "강자형", desc: "물리적 저항 극심", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음." },
-    { type: "사이코형", desc: "예측 불가 행동", arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 언어적 설득이 역효과 날 수 있음. 선제 자극 금지." },
-    { type: "교활형", desc: "심리적 조종 시도", arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적. 대화로 시간 끌기 금지." },
+    { type: "강자형", crimeType: "특수폭행", desc: "물리적 저항 극심, 흉기 소지", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
+    { type: "사이코형", crimeType: "특수협박", desc: "예측 불가 행동, 폭발물·흉기 위협", arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 언어적 설득이 역효과 날 수 있음. 선제 자극 금지.", lawKeyword: "위험" },
+    { type: "교활형", crimeType: "절도·사기", desc: "심리적 조종 시도, 도주 시도 가능성 높음", arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적. 대화로 시간 끌기 금지.", lawKeyword: "불심검문" },
+    { type: "성범죄자형", crimeType: "강간·성추행", desc: "현행범 도주 중, 피해자 보호 필요", arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 2차 피해 방지를 위한 증거 보존 지시.", lawKeyword: "경찰장구" },
+    { type: "음주폭력형", crimeType: "폭행·상해", desc: "만취 상태 폭행, 주변인 피해 발생", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압. 응급처치 대기.", lawKeyword: "경찰장구" },
+    { type: "교통도주형", crimeType: "교통사고 후 도주", desc: "사고 후 현장 이탈 시도, 피해자 방치", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포. 피해자 응급 조치 병행.", lawKeyword: "위험" },
+    { type: "가정폭력형", crimeType: "가정폭력·아동학대", desc: "가족 대상 반복 폭력, 피해자 격리 필요", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토. 증거사진 촬영 지시.", lawKeyword: "불심검문" },
   ];
 
   const KIM_TALK_POOL = {
@@ -480,12 +494,39 @@
     updateStatusBars();
     updatePixelArt(1);
 
-    const startMsg =
-      `💬 현장 대사 | 피의자 [${suspectInfo.type}]: "크크크... 더 다가와 봐, 어디 한 번 날 건드려 보라고!"\n\n` +
-      `📝 상황 묘사 | ${selectedJurisdiction} ${currentLocation}에서 강력 코드제로 대치 상황이 발생했습니다. ${name} ${rank}은 경사 강태구와 함께 현장에 출동했습니다. 용의자는 [${suspectInfo.type}] 성향으로 흉기를 고쳐 쥐고 대치 라인을 위협합니다. 주변 시민 난입으로 저지선이 불안정한 상태입니다.\n\n` +
-      `🎯 추천 선택지 |\n1. 📢 경사 강태구에게 거리 유지를 지시하며, 상황실에 코드제로 현황을 무전 보고한다.\n2. 🛡️ 확장형 삼단봉을 파지하여 강태구 경사와 연동 저지망을 구축한다.\n3. ⚡ 무전 토글을 활성화하고 상황실에 피의자 무기 대치 상황을 즉시 전파한다.`;
+    const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 생성 중 ]", "ai");
 
-    formatAndAppendMessage(startMsg, "ai");
+    try {
+      const lawCtx = await fetchLawContext(suspectInfo.lawKeyword || "경찰관 직무집행법");
+      const initPrompt =
+        `[절대 규칙] 반드시 아래 포맷으로만 응답하라. 자기소개·설명 금지.\n` +
+        `출력 포맷:\n` +
+        `💬 현장 대사 | (용의자 또는 신고자 대사)\n` +
+        `📝 상황 묘사 | (초동 출동 현장 상황)\n` +
+        `🎯 추천 선택지 |\n1. 옵션A\n2. 옵션B\n3. 옵션C\n\n` +
+        `너는 대한민국 경찰 112 초동출동 훈련 시뮬레이터다.\n` +
+        `다음 조건으로 출동 초기 상황을 생성하라:\n` +
+        `- 피훈련자: ${name} ${rank}\n` +
+        `- 동행 동료: 강태구 경사\n` +
+        `- 현장: ${selectedJurisdiction} ${currentLocation}\n` +
+        `- 범죄 유형: ${suspectInfo.crimeType}\n` +
+        `- 용의자 성향: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
+        `- 체포 지침: ${suspectInfo.arrestGuide}\n\n` +
+        `현장 도착 직후 상황을 사실적으로 묘사하라. 피의자 대사는 범죄 유형에 맞게 창작하라.\n` +
+        `선택지 3개는 현 상황에서 취할 수 있는 현실적 경찰 조치여야 한다.\n` +
+        `한자 절대 사용 금지. 100% 한글로만 출력.${lawCtx}`;
+
+      const startMsg = await fetchGeminiResponse(`${name} ${rank} 현장 도착. 상황 보고 바람.`, initPrompt);
+      loadingDiv.remove();
+      formatAndAppendMessage(startMsg, "ai");
+    } catch (e) {
+      loadingDiv.remove();
+      const fallback =
+        `💬 현장 대사 | 용의자: "꺼져! 더 가까이 오면 찌른다!"\n\n` +
+        `📝 상황 묘사 | ${selectedJurisdiction} ${currentLocation}에서 ${suspectInfo.crimeType} 신고가 접수됐습니다. ${name} ${rank}은 강태구 경사와 함께 현장에 도착했습니다. 용의자는 [${suspectInfo.type}] 성향으로 대치 중입니다.\n\n` +
+        `🎯 추천 선택지 |\n1. 상황실에 현장 상황 무전 보고한다.\n2. 강태구 경사와 함께 저지선을 구축한다.\n3. 용의자에게 경고 방송을 실시한다.`;
+      formatAndAppendMessage(fallback, "ai");
+    }
     lastReportTurn = 1;
   }
 
@@ -567,12 +608,18 @@
   }
 
   async function fetchLawContext(userText) {
-    let keyword = "경찰관 직무집행법";
-    if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총") || userText.includes("무기")) keyword = "무기";
-    else if (userText.includes("테이저") || userText.includes("삼단봉") || userText.includes("수갑")) keyword = "경찰장구";
-    else if (userText.includes("위험") || userText.includes("대피") || userText.includes("피난")) keyword = "위험";
-    else if (userText.includes("불심") || userText.includes("검문") || userText.includes("신분")) keyword = "불심검문";
-    else if (userText.includes("과잉") || userText.includes("비례") || userText.includes("위법")) keyword = "과잉";
+    // userText가 짧은 키워드(lawKeyword)로 직접 들어오는 경우 우선 처리
+    const directKeywords = ["무기", "경찰장구", "위험", "불심검문", "과잉"];
+    if (directKeywords.includes(userText)) {
+      // pass through as keyword directly
+    } else if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총") || userText.includes("무기")) userText = "무기";
+    else if (userText.includes("테이저") || userText.includes("삼단봉") || userText.includes("수갑")) userText = "경찰장구";
+    else if (userText.includes("위험") || userText.includes("대피") || userText.includes("피난") || userText.includes("협박") || userText.includes("폭발")) userText = "위험";
+    else if (userText.includes("불심") || userText.includes("검문") || userText.includes("신분") || userText.includes("절도") || userText.includes("도주")) userText = "불심검문";
+    else if (userText.includes("과잉") || userText.includes("비례") || userText.includes("위법")) userText = "과잉";
+    else if (userText.includes("성") || userText.includes("폭행") || userText.includes("가정")) userText = "경찰장구";
+    else userText = "경찰관 직무집행법";
+    const keyword = userText;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 4000);
@@ -799,40 +846,85 @@
     }
   }
 
+  function makeLabelSpan(emoji, labelText, cls) {
+    const lbl = document.createElement("span");
+    lbl.className = "section-label";
+    lbl.textContent = `${emoji} ${labelText}`;
+    return lbl;
+  }
+
+  function makeSection(cls, emoji, labelText, contentText) {
+    const span = document.createElement("span");
+    span.className = cls;
+    span.appendChild(makeLabelSpan(emoji, labelText, cls));
+    const txt = document.createTextNode(contentText);
+    span.appendChild(txt);
+    return span;
+  }
+
+  // Parse "EMOJI 제목 | 내용" → { label, content }
+  function parseSectionLine(line, prefix) {
+    const after = line.slice(prefix.length);
+    const pipeIdx = after.indexOf("|");
+    if (pipeIdx === -1) return { label: after.trim(), content: "" };
+    return { label: after.slice(0, pipeIdx).trim(), content: after.slice(pipeIdx + 1).trim() };
+  }
+
   function formatAndAppendMessage(rawText, classes) {
     const div = document.createElement("div");
     div.className = `message ${classes}`;
     let optionLines = [];
     let insideOptions = false;
+    let currentSectionClass = null; // track for continuation lines
+
+    const SECTION_MAP = [
+      { prefix: "💬", emoji: "💬", label: "현장 대사", cls: "story-dialogue" },
+      { prefix: "📝", emoji: "📝", label: "상황 묘사", cls: "story-desc" },
+      { prefix: "🟢", emoji: "🟢", label: "점수 변동", cls: "story-score" },
+      { prefix: "🔴", emoji: "🔴", label: "감점 내역", cls: "story-penalty" },
+      { prefix: "🔶", emoji: "🔶", label: "대원 변동", cls: "story-stat-change" },
+      { prefix: "🚨", emoji: "🚨", label: "무전 교신", cls: "radio-comms" },
+      { prefix: "📢", emoji: "📢", label: "시민 상황", cls: "civilian-alert" },
+    ];
 
     rawText.split("\n").forEach(line => {
-      if (!line.trim()) return;
-      if (line.startsWith("🎯") || insideOptions || /^[1-5]\./.test(line.trim())) {
+      const trimmed = line.trim();
+      if (!trimmed) { currentSectionClass = null; return; }
+
+      // Options block
+      if (line.startsWith("🎯") || insideOptions || /^[1-5]\./.test(trimmed)) {
         insideOptions = true;
+        currentSectionClass = null;
         optionLines.push(line);
         return;
       }
-      const span = document.createElement("span");
-      if (line.startsWith("💬")) {
-        const clean = line.replace("💬 현장 대사 |", "").trim();
-        if (!clean || clean === "없음") return;
-        span.className = "story-dialogue"; span.textContent = line;
-      } else if (line.startsWith("📝")) {
-        span.className = "story-desc"; span.textContent = line;
-      } else if (line.startsWith("🟢")) {
-        span.className = "story-score"; span.textContent = line;
-      } else if (line.startsWith("🔴")) {
-        span.className = "story-penalty"; span.textContent = line;
-      } else if (line.startsWith("🔶")) {
-        span.className = "story-stat-change"; span.textContent = line;
-      } else if (line.startsWith("🚨") || line.startsWith("📢")) {
-        span.className = "system-alert"; span.textContent = line;
-      } else {
-        const p = document.createElement("p");
-        p.textContent = line; p.style.marginBottom = "4px";
-        div.appendChild(p); return;
+
+      // Check for new section header
+      const section = SECTION_MAP.find(s => line.startsWith(s.prefix));
+      if (section) {
+        currentSectionClass = section.cls;
+        const { label, content } = parseSectionLine(line, section.prefix);
+        if (section.cls === "story-dialogue" && (!content || content === "없음")) {
+          currentSectionClass = null; return;
+        }
+        const el = makeSection(section.cls, section.emoji, label || section.label, content ? " " + content : "");
+        div.appendChild(el);
+        return;
       }
-      div.appendChild(span);
+
+      // Continuation line within current section
+      if (currentSectionClass) {
+        const cont = document.createElement("span");
+        cont.className = currentSectionClass === "story-dialogue" ? "story-dialogue-cont" : currentSectionClass;
+        cont.textContent = trimmed;
+        div.appendChild(cont);
+        return;
+      }
+
+      // Plain line
+      const p = document.createElement("p");
+      p.textContent = trimmed; p.style.marginBottom = "4px";
+      div.appendChild(p);
     });
 
     if (optionLines.length > 0) {

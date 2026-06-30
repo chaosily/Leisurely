@@ -98,6 +98,31 @@
     .civilian-alert .section-label { background: rgba(167,139,250,0.18); color: #a78bfa; }
 
     .interactive-options-container { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── 종합평가 페이지 ──────────────────────────────────── */
+    #eval-zone { display: none; }
+    .eval-page { padding: 4px 0; }
+    .eval-header { text-align: center; border-bottom: 2px solid var(--border); padding-bottom: 18px; margin-bottom: 20px; }
+    .eval-title { font-size: 1.3rem; font-weight: bold; color: #f9fafb; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .eval-subtitle { color: #6b7280; font-size: 12px; line-height: 1.6; }
+    .eval-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    .eval-stat-card { background: #111c30; border: 1px solid var(--border); border-radius: 8px; padding: 12px 8px; text-align: center; }
+    .eval-stat-label { font-size: 10px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .eval-stat-value { font-size: 1.3rem; font-weight: bold; }
+    .eval-score-banner { text-align: center; background: linear-gradient(135deg, #1e3a8a 0%, #065f46 100%); padding: 22px; border-radius: 10px; margin-bottom: 22px; border: 1px solid #374151; }
+    .eval-score-num { font-size: 3.2rem; font-weight: bold; }
+    .eval-score-comment { font-size: 13px; color: #d1d5db; margin-top: 8px; line-height: 1.6; }
+    .eval-section-title { font-size: 13px; font-weight: bold; color: #50e3c2; margin-bottom: 8px; }
+    .eval-summary-box { background: #111827; border-left: 3px solid #50e3c2; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-bottom: 22px; color: #d1d5db; line-height: 1.8; font-size: 13px; }
+    .eval-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; font-size: 13px; }
+    .eval-table th { padding: 10px 14px; text-align: left; font-weight: bold; font-size: 12px; }
+    .eval-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); line-height: 1.7; vertical-align: top; }
+    .eval-table tr:last-child td { border-bottom: none; }
+    .eval-th-good { background: rgba(16,185,129,0.12); color: #10b981; border-right: 1px solid var(--border); width: 50%; }
+    .eval-th-bad  { background: rgba(249,115,22,0.12); color: #f97316; width: 50%; }
+    .eval-td-good { color: #a7f3d0; border-right: 1px solid var(--border); }
+    .eval-td-bad  { color: #fed7aa; }
+    .eval-restart-row { text-align: center; padding-top: 8px; border-top: 1px dashed var(--border); }
     .option-btn { background: #1f2937; border: 1px solid var(--accent-options); color: #f3f4f6; padding: 10px 14px; border-radius: 6px; text-align: left; font-size: 13px; cursor: pointer; transition: all 0.2s; }
     .option-btn:hover:not(:disabled) { background: #2d3748; box-shadow: 0 0 6px rgba(251,191,36,0.3); }
     .option-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #374151; }
@@ -256,6 +281,8 @@
       </div>
     </div>
   </div>
+
+  <div id="eval-zone"></div>
 </div>
 
 <script>
@@ -752,6 +779,8 @@
     const armorEl = document.getElementById("item-armor");
     if (armorEl) armorEl.setAttribute("onclick", "toggleArmor(this)");
 
+    document.getElementById("eval-zone").style.display = "none";
+    simZone.style.display = "block";
     suspectTypeEl.textContent = "[??? - 용의자 정보 수집 중]";
     officerLeeRow.style.display = "none";
     supportEtaLine.style.display = "none";
@@ -765,6 +794,7 @@
   };
 
   window.newTraining = function() {
+    document.getElementById("eval-zone").style.display = "none";
     simZone.style.display = "none";
     loginZone.style.display = "block";
     chatWindow.innerHTML = "";
@@ -820,50 +850,153 @@
 
     const arrestReply = await fetchGeminiResponse("피의자 수갑 체포 집행", arrestPrompt);
     formatAndAppendMessage(arrestReply, "ai");
-    await triggerFinalEvaluation("체포완료");
+    // 체포 장면 잠깐 보여준 뒤 평가 페이지로
+    setTimeout(() => triggerFinalEvaluation("체포완료"), 1200);
   }
 
   async function triggerFinalEvaluation(reason) {
     disableGameInput("훈련 완료");
     const reasonMap = {
-      "체포완료":     "피의자 체포에 성공했습니다.",
-      "턴종료":       `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
-      "체력소진":     "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
-      "멘탈붕괴":     "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다.",
-      "보고불이행":   "상황 보고 불이행으로 직무집행 정지 명령이 하달되었습니다."
+      "체포완료":   "피의자 체포에 성공했습니다.",
+      "턴종료":     `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
+      "체력소진":   "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
+      "멘탈붕괴":   "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다.",
+      "보고불이행": "상황 보고 불이행으로 직무집행 정지 명령이 하달되었습니다."
     };
+
+    // 채팅창에 로딩 표시
     const loadingMsg = appendMessage(`[ 훈련 종료: ${reasonMap[reason] || reason} | 법령 기반 AI 평가 생성 중... ]`, "ai");
 
-    // Fetch relevant laws for the suspect's crime type
-    const evalLawCtx = await fetchLawContext(suspectInfo.lawKeyword || "과잉");
+    const LAW_CONTEXT = `
+[경찰관 직무집행법 주요 조문 및 판례]
+- 제3조(불심검문): 합리적 의심 시 정지·질문 가능. 신분증 제시 및 목적 고지 의무. (헌재 2002헌마51 참조)
+- 제5조(위험발생의 방지): 생명·신체 위해 우려 시 경고·피난 조치 가능. 흉기 소지자 대치 시 시민 대피 명령 적법.
+- 제10조의2(경찰장구 사용): 현행범 체포, 도주방지, 위해방어, 공무집행 항거 제지 시 수갑·포승·삼단봉 사용 가능. 상황에 비례한 장구 선택 필수.
+- 제10조의4(무기 사용): 항거·도주방지·생명신체방어 시 무기 사용 가능. 과잉금지원칙(비례원칙) 엄수.
+- 제11조의2(손실보상) 및 과잉금지원칙: 물리력은 목적의 정당성·수단의 적합성·침해의 최소성·법익의 균형성을 갖춰야 함. 위반 시 위법 공무집행 민형사 책임 발생.
+- 헌법 제37조 제2항: 국민의 자유·권리는 필요한 경우에 한하여 법률로 제한 가능.
+- 대법원 2015다248342: 경찰의 물리력 행사는 비례원칙에 따라 최소한으로 한정.
+- 대법원 2014도9172: 현행범 체포 요건(현행성·명백성·필요성) 충족 여부는 현장 상황 기준으로 판단.`;
 
     const evalPrompt =
-      `[절대 규칙] 반드시 아래 포맷으로만 응답하라. 자기소개·설명 금지.\n` +
-      `너는 대한민국 경찰관 초동조치 도상훈련 최종 평가관이다. 반드시 경찰관 직무집행법 조문을 인용하여 평가하라.\n\n` +
+      `[절대 규칙] 반드시 아래 포맷으로만 응답하라. 자기소개·설명·메타대화 금지.\n` +
+      `너는 대한민국 경찰관 초동조치 도상훈련 최종 평가관이다.\n\n` +
       `[훈련 결과 데이터]\n` +
       `피훈련자: ${player.name} ${player.rank} | 관할지: ${selectedJurisdiction} ${currentLocation}\n` +
       `종료 사유: ${reasonMap[reason] || reason}\n` +
       `진행 턴: ${turnCount - 1}/${maxTurns}턴 | 용의자: [${suspectInfo.type}] ${suspectInfo.crimeType}\n` +
-      `최종 훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
+      `훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
       `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}%\n` +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
-      `\n[법령 참고 조문]\n${evalLawCtx}\n\n` +
-      `위 데이터와 법령 조문을 기반으로 다음 포맷으로 평가하라.\n` +
-      `각 항목에서 반드시 구체적인 법령 조문명(예: 경찰관 직무집행법 제10조의4)을 인용하라.\n\n` +
-      `출력 포맷 (반드시 이 순서로):\n` +
-      `📝 훈련 총평 | (종료 사유와 현장 수치를 종합한 3~5줄 서술)\n` +
-      `🟢 잘한 점 | (법령 조문 인용 포함, 구체적 항목 2~3개)\n` +
-      `🔴 미흡한 점 | (법령 조문 인용 포함, 구체적 항목 2~3개)\n` +
+      `\n${LAW_CONTEXT}\n\n` +
+      `[평가 지침]\n` +
+      `- 경찰관 직무집행법 제2조(직무범위)에만 집중하지 말 것.\n` +
+      `- 잘한 점·미흡한 점 각 항목마다 위 조문(제3조·제5조·제10조의2·제10조의4·제11조의2) 중 적절한 조항을 반드시 인용.\n` +
+      `- 가능하면 관련 판례(대법원·헌법재판소)도 1~2회 인용.\n` +
+      `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가.\n\n` +
+      `출력 포맷 (반드시 이 순서로, 이모지 접두사 포함):\n` +
+      `📝 훈련 총평 | (3~5줄 서술형. 종료 사유와 현장 수치를 종합)\n` +
+      `🟢 잘한 점 | 항목1 [법령 인용]\n🟢 잘한 점 | 항목2 [법령 인용]\n🟢 잘한 점 | 항목3 [법령 인용]\n` +
+      `🔴 미흡한 점 | 항목1 [법령 인용]\n🔴 미흡한 점 | 항목2 [법령 인용]\n🔴 미흡한 점 | 항목3 [법령 인용]\n` +
       `🏆 종합 평점 | NN점 / 100점\n` +
-      `(소감 한 줄)\n\n` +
-      `평점 산정: 훈련점수(30점)+통제도(20점)+적법률(20점)+체력/멘탈(15점)+동료관계(15점) → 100점 만점 환산.\n` +
+      `💬 소감 | (격려 또는 개선 제언 한 줄)\n\n` +
+      `평점 산정: 훈련점수(30)+통제도(20)+적법률(20)+체력/멘탈(15)+동료관계(15) → 100점 만점 환산.\n` +
       `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
     const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt);
     loadingMsg.remove();
-    formatAndAppendMessage(evalReply, "ai");
-    addRestartButtons();
+    showEvalPage(evalReply, reasonMap[reason] || reason);
+  }
+
+  function showEvalPage(rawText, reasonText) {
+    // ── 섹션 파싱 ──────────────────────────────────
+    const lines = rawText.split('\n');
+    let summary = '', scoreStr = '', comment = '', goodItems = [], badItems = [];
+    let curSec = null;
+    lines.forEach(line => {
+      const t = line.trim(); if (!t) return;
+      if (t.startsWith('📝')) {
+        curSec = 'sum';
+        const c = t.replace(/^📝[^|]*\|/, '').trim(); if (c) summary += c + ' ';
+      } else if (t.startsWith('🟢')) {
+        curSec = 'good';
+        const c = t.replace(/^🟢[^|]*\|/, '').trim(); if (c && c !== '없음') goodItems.push(c);
+      } else if (t.startsWith('🔴')) {
+        curSec = 'bad';
+        const c = t.replace(/^🔴[^|]*\|/, '').trim(); if (c && c !== '없음') badItems.push(c);
+      } else if (t.startsWith('🏆')) {
+        curSec = 'score'; scoreStr = t.replace(/^🏆[^|]*\|/, '').trim();
+      } else if (t.startsWith('💬')) {
+        curSec = 'comment'; comment = t.replace(/^💬[^|]*\|/, '').trim();
+      } else {
+        if (curSec === 'sum')  summary += t + ' ';
+        else if (curSec === 'good' && t.startsWith('-')) goodItems.push(t.slice(1).trim());
+        else if (curSec === 'bad'  && t.startsWith('-')) badItems.push(t.slice(1).trim());
+        else if (curSec === 'comment') comment += t;
+      }
+    });
+    const numMatch = scoreStr.match(/(\d+)/);
+    const scoreNum = numMatch ? parseInt(numMatch[1]) : 0;
+    const scoreColor = scoreNum >= 80 ? '#10b981' : scoreNum >= 60 ? '#fbbf24' : '#f97316';
+
+    // ── 통계 카드 ───────────────────────────────────
+    const statCards = [
+      { label: '훈련 점수', value: `${score}점`, color: '#fbbf24' },
+      { label: '현장 통제도', value: `${controlRate}%`, color: controlRate >= 50 ? '#10b981' : '#f97316' },
+      { label: '적법 조치율', value: `${legalRate}%`, color: legalRate >= 60 ? '#60a5fa' : '#f97316' },
+      { label: '체력/멘탈', value: `${userHp}%/${userMental}%`, color: '#a78bfa' },
+    ].map(c => `<div class="eval-stat-card"><div class="eval-stat-label">${c.label}</div><div class="eval-stat-value" style="color:${c.color}">${c.value}</div></div>`).join('');
+
+    // ── 잘한점/미흡한점 표 ─────────────────────────
+    const maxRows = Math.max(goodItems.length, badItems.length, 1);
+    const tableRows = Array.from({ length: maxRows }, (_, i) =>
+      `<tr><td class="eval-td-good">${goodItems[i] ? '✓ ' + esc(goodItems[i]) : ''}</td><td class="eval-td-bad">${badItems[i] ? '△ ' + esc(badItems[i]) : ''}</td></tr>`
+    ).join('');
+
+    const evalZone = document.getElementById("eval-zone");
+    simZone.style.display = "none";
+    evalZone.style.display = "block";
+
+    evalZone.innerHTML = `<div class="eval-page">
+      <div class="eval-header">
+        <div class="eval-title">🎖 도상훈련 종합평가 보고서</div>
+        <div class="eval-subtitle">
+          ${esc(player.name)} ${esc(player.rank)} · ${esc(selectedJurisdiction)} ${esc(currentLocation)}<br>
+          용의자: [${esc(suspectInfo.type)}] ${esc(suspectInfo.crimeType)} · 진행: ${turnCount - 1}/${maxTurns}턴 · 종료: ${esc(reasonText)}
+        </div>
+      </div>
+
+      <div class="eval-stats-grid">${statCards}</div>
+
+      <div class="eval-score-banner">
+        <div style="font-size:11px;color:#9ca3af;margin-bottom:6px;letter-spacing:1px;">종 합 평 점</div>
+        <div class="eval-score-num" style="color:${scoreColor}">${scoreNum}점</div>
+        <div style="font-size:11px;color:#9ca3af;margin-top:4px;">/ 100점 만점</div>
+        ${comment ? `<div class="eval-score-comment">${esc(comment)}</div>` : ''}
+      </div>
+
+      <div class="eval-section-title">📝 훈련 총평</div>
+      <div class="eval-summary-box">${esc(summary.trim())}</div>
+
+      <table class="eval-table">
+        <thead><tr>
+          <th class="eval-th-good">🟢 잘한 점</th>
+          <th class="eval-th-bad">🟠 미흡한 점</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div class="eval-restart-row">
+        <p style="color:#6b7280;font-size:12px;margin-bottom:10px;">훈련 세션이 종료되었습니다.</p>
+        <button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>
+        <button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>
+      </div>
+    </div>`;
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   // ── 클라이언트 사이드 통제도/적법률 계산 ──────────────────────────────
@@ -1017,12 +1150,6 @@
     if (arrestAttempt) {
       loadingDiv.remove();
       await triggerArrest();
-      return;
-    }
-
-    if (turnCount >= maxTurns) {
-      loadingDiv.remove();
-      await triggerFinalEvaluation("턴종료");
       return;
     }
 
@@ -1229,10 +1356,16 @@
 
       // Continuation line within current section
       if (currentSectionClass) {
-        const cont = document.createElement("span");
-        cont.className = currentSectionClass === "story-dialogue" ? "story-dialogue-cont" : currentSectionClass;
-        cont.textContent = trimmed;
-        div.appendChild(cont);
+        if (currentSectionClass === "story-dialogue" && /^[^:\s]{1,12}:\s*["""「『]/.test(trimmed)) {
+          // 새 화자 등장 → 독립 라벨로 렌더링
+          const el = makeSection("story-dialogue", "💬", "현장 대사", " " + trimmed);
+          div.appendChild(el);
+        } else {
+          const cont = document.createElement("span");
+          cont.className = currentSectionClass === "story-dialogue" ? "story-dialogue-cont" : currentSectionClass;
+          cont.textContent = trimmed;
+          div.appendChild(cont);
+        }
         return;
       }
 

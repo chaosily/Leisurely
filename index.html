@@ -409,12 +409,15 @@
     return { date: `${y}.${mo}.${d}`, time: `${h}:${mi}`, caseNum };
   }
 
-  async function fetchGeminiResponse(userMessage, systemPrompt) {
-    const MODELS = ["gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash-8b"];
+  async function fetchGeminiResponse(userMessage, systemPrompt, highQuality = false) {
+    const MODELS = highQuality
+      ? ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]
+      : ["gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash-8b"];
+    const maxTokens = highQuality ? 8192 : 4096;
     const body = JSON.stringify({
       system_instruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: "user", parts: [{ text: userMessage }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+      generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens }
     });
     for (const model of MODELS) {
       try {
@@ -906,7 +909,7 @@
       `평점 산정: 훈련점수(30)+통제도(20)+적법률(20)+체력/멘탈(15)+동료관계(15) → 100점 만점 환산.\n` +
       `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
-    const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt);
+    const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt, true);
     loadingMsg.remove();
     window._pendingEvalReply = evalReply;
     window._pendingEvalReason = reasonMap[reason] || reason;

@@ -286,7 +286,7 @@
 
   // attackMode: "physical"(체력감소), "verbal"(멘탈감소), "random"
   const SUSPECT_POOL = [
-    { type: "강자형",     crimeType: "특수폭행",       desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
+    { type: "깡패형",     crimeType: "특수폭행",       desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
     { type: "사이코형",   crimeType: "특수협박",       desc: "예측 불가 행동, 폭발물·흉기 위협",           attackMode: "both",     arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
     { type: "교활형",     crimeType: "절도·사기",     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
     { type: "성범죄자형", crimeType: "강간·성추행",   desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
@@ -709,6 +709,88 @@
     actionInputEl.disabled = true;
   }
 
+  function addRestartButtons() {
+    const div = document.createElement("div");
+    div.className = "message ai";
+    div.style.textAlign = "center";
+    div.style.padding = "12px";
+    div.innerHTML =
+      `<p style="color:#9ca3af;margin-bottom:10px;font-size:12px;">훈련 세션이 종료되었습니다.</p>` +
+      `<button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>` +
+      `<button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  window.resetTraining = function() {
+    score = 0; controlRate = 65; legalRate = 90; turnCount = 1;
+    isRadioMode = false; radioUsedThisTurn = false; currentTotalSeconds = 0;
+    isArmorEquipped = false; currentHoldingWeapon = ""; isBatonActive = false; isCuffsActive = false;
+    userHp = 100; userMental = 100;
+    kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;
+    leeMental = 0; leeTrust = 0; leeHp = 100;
+    supportRequested = false; supportArrivalTurn = -1; supportArrived = false;
+    suspectInfo = SUSPECT_POOL[randInt(0, SUSPECT_POOL.length - 1)];
+    suspectRevealed = false; suspectRevealTurn = randInt(2, 5);
+    lastReportTurn = 1;
+
+    chatWindow.innerHTML = "";
+    stageEl.textContent = `1 / ${maxTurns} 턴`;
+    scoreEl.textContent = "0";
+    sendChatBtn.disabled = false; sendActionBtn.disabled = false;
+    chatInputEl.disabled = false; actionInputEl.disabled = false;
+    radioToggleBtn.classList.remove("active"); radioToggleBtn.textContent = "무전 OFF";
+    chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
+    weaponPrefixEl.style.display = "none";
+    document.querySelectorAll(".inventory-slots .item-chip").forEach(c => {
+      c.classList.remove("active"); c.onclick = null;
+    });
+    // Re-bind inventory chips
+    [["item-pistol","3.8구경 권총"],["item-taser","테이저건"],["item-baton","확장형 삼단봉"],["item-cuffs","경찰 수갑"]].forEach(([id, name]) => {
+      const el = document.getElementById(id); if (el) el.setAttribute("onclick", `selectWeapon(this,'${name}')`);
+    });
+    const armorEl = document.getElementById("item-armor");
+    if (armorEl) armorEl.setAttribute("onclick", "toggleArmor(this)");
+
+    suspectTypeEl.textContent = "[??? - 용의자 정보 수집 중]";
+    officerLeeRow.style.display = "none";
+    supportEtaLine.style.display = "none";
+
+    const locations = JURISDICTION_MAP[selectedJurisdiction];
+    currentLocation = locations[randInt(0, locations.length - 1)];
+    document.getElementById("dispatch-location").textContent = currentLocation;
+
+    updateStatusBars(); updatePixelArt(1);
+    handleLogin._restart();
+  };
+
+  window.newTraining = function() {
+    simZone.style.display = "none";
+    loginZone.style.display = "block";
+    chatWindow.innerHTML = "";
+  };
+
+  // Expose a restart-friendly entry point (skips login validation)
+  handleLogin._restart = async function() {
+    const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 재생성 중 ]", "ai");
+    try {
+      const lawCtx = await fetchLawContext(suspectInfo.lawKeyword || "경찰관 직무집행법");
+      const initPrompt =
+        `[절대 규칙] 반드시 아래 포맷으로만 응답하라. 자기소개·설명 금지.\n` +
+        `출력 포맷:\n💬 현장 대사 | (용의자 또는 신고자 대사)\n📝 상황 묘사 | (초동 출동 현장 상황)\n🎯 추천 선택지 |\n1. 옵션A\n2. 옵션B\n3. 옵션C\n\n` +
+        `너는 대한민국 경찰 112 초동출동 훈련 시뮬레이터다.\n` +
+        `피훈련자: ${player.name} ${player.rank} | 동행: 강태구 경사 | 현장: ${selectedJurisdiction} ${currentLocation}\n` +
+        `범죄 유형: ${suspectInfo.crimeType} | 용의자: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
+        `현장 도착 직후 상황을 사실적으로 묘사하라. 한자 절대 사용 금지.${lawCtx}`;
+      const startMsg = await fetchGeminiResponse(`${player.name} ${player.rank} 현장 도착.`, initPrompt);
+      loadingDiv.remove();
+      formatAndAppendMessage(startMsg, "ai");
+    } catch (e) {
+      loadingDiv.remove();
+      appendMessage(`💬 현장 대사 | 용의자: "물러서!"\n📝 상황 묘사 | ${currentLocation}. ${suspectInfo.crimeType} 신고. 대치 중.`, "ai");
+    }
+  };
+
   function triggerGameOver(reasonText) {
     disableGameInput("훈련 중단");
     const div = document.createElement("div");
@@ -716,6 +798,7 @@
     div.innerHTML = `<span class="system-alert">🚨 도상훈련 강제 종료 (GAME OVER)</span><br><p>${reasonText}</p><br><p style="color:#fbbf24;">최종 훈련 점수: <strong>${score}점</strong></p>`;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+    addRestartButtons();
   }
 
   async function triggerArrest() {
@@ -743,41 +826,112 @@
   async function triggerFinalEvaluation(reason) {
     disableGameInput("훈련 완료");
     const reasonMap = {
-      "체포완료": "피의자 체포에 성공했습니다.",
-      "턴종료": `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
-      "체력소진": "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
-      "멘탈붕괴": "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다."
+      "체포완료":     "피의자 체포에 성공했습니다.",
+      "턴종료":       `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
+      "체력소진":     "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
+      "멘탈붕괴":     "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다.",
+      "보고불이행":   "상황 보고 불이행으로 직무집행 정지 명령이 하달되었습니다."
     };
-    appendMessage(`[ 훈련 종료 사유: ${reasonMap[reason] || reason} | AI 종합 평가 생성 중... ]`, "ai");
+    const loadingMsg = appendMessage(`[ 훈련 종료: ${reasonMap[reason] || reason} | 법령 기반 AI 평가 생성 중... ]`, "ai");
+
+    // Fetch relevant laws for the suspect's crime type
+    const evalLawCtx = await fetchLawContext(suspectInfo.lawKeyword || "과잉");
 
     const evalPrompt =
-      `[절대 규칙] 반드시 아래 포맷으로만 응답하라.\n` +
-      `너는 대한민국 경찰관 초동조치 도상훈련 최종 평가관이다.\n\n` +
+      `[절대 규칙] 반드시 아래 포맷으로만 응답하라. 자기소개·설명 금지.\n` +
+      `너는 대한민국 경찰관 초동조치 도상훈련 최종 평가관이다. 반드시 경찰관 직무집행법 조문을 인용하여 평가하라.\n\n` +
       `[훈련 결과 데이터]\n` +
       `피훈련자: ${player.name} ${player.rank} | 관할지: ${selectedJurisdiction} ${currentLocation}\n` +
       `종료 사유: ${reasonMap[reason] || reason}\n` +
-      `진행 턴: ${turnCount - 1}/${maxTurns}턴\n` +
-      `용의자 유형: ${suspectInfo.type} (${suspectInfo.crimeType})\n` +
-      `최종 훈련 점수: ${score}점\n` +
-      `현장 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
+      `진행 턴: ${turnCount - 1}/${maxTurns}턴 | 용의자: [${suspectInfo.type}] ${suspectInfo.crimeType}\n` +
+      `최종 훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
       `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}%\n` +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
-      (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) + `\n` +
-      `위 데이터를 바탕으로 종합 평가를 작성하라.\n\n` +
+      (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
+      `\n[법령 참고 조문]\n${evalLawCtx}\n\n` +
+      `위 데이터와 법령 조문을 기반으로 다음 포맷으로 평가하라.\n` +
+      `각 항목에서 반드시 구체적인 법령 조문명(예: 경찰관 직무집행법 제10조의4)을 인용하라.\n\n` +
       `출력 포맷 (반드시 이 순서로):\n` +
-      `📝 훈련 총평 | (3~5줄 서술형 총평)\n` +
-      `🟢 잘한 점 | (구체적 항목 2~3개)\n` +
-      `🔴 미흡한 점 | (구체적 항목 2~3개)\n` +
-      `🏆 종합 평점 | NN점 / 100점 (소감 한 줄)\n\n` +
-      `평점 산정 기준: 훈련점수(30점) + 통제도(20점) + 적법률(20점) + 체력/멘탈(15점) + 동료관계(15점)을 가중 합산하여 100점 만점으로 환산.\n` +
+      `📝 훈련 총평 | (종료 사유와 현장 수치를 종합한 3~5줄 서술)\n` +
+      `🟢 잘한 점 | (법령 조문 인용 포함, 구체적 항목 2~3개)\n` +
+      `🔴 미흡한 점 | (법령 조문 인용 포함, 구체적 항목 2~3개)\n` +
+      `🏆 종합 평점 | NN점 / 100점\n` +
+      `(소감 한 줄)\n\n` +
+      `평점 산정: 훈련점수(30점)+통제도(20점)+적법률(20점)+체력/멘탈(15점)+동료관계(15점) → 100점 만점 환산.\n` +
       `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
     const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt);
-    // Remove the loading message
-    const msgs = chatWindow.querySelectorAll(".message.ai");
-    if (msgs.length > 0) msgs[msgs.length - 1].remove();
+    loadingMsg.remove();
     formatAndAppendMessage(evalReply, "ai");
+    addRestartButtons();
   }
+
+  // ── 클라이언트 사이드 통제도/적법률 계산 ──────────────────────────────
+  function applyRoundChanges(inputType, weaponUsed, isRadioTurn, text, preNoReport) {
+    let ctrlDelta = -2; // 매 턴 시간 압박
+    let legalDelta = 0;
+    const notes = [];
+
+    if (inputType === "action") {
+      if (weaponUsed === "3.8구경 권총") {
+        legalDelta -= 15;
+        if (controlRate > 65) { legalDelta -= 5; notes.push("⚖️ 권총 과잉사용: 적법률↓↓"); }
+        if (Math.random() < 0.65) { ctrlDelta += 12; notes.push("🔫 권총 위협 성공: 통제도↑"); }
+        else                      { ctrlDelta -= 10; notes.push("🔫 권총 위협 실패: 통제도↓"); }
+      } else if (weaponUsed === "테이저건") {
+        legalDelta -= 8;
+        if (suspectRevealed && suspectInfo.attackMode === "verbal") { legalDelta -= 3; notes.push("⚖️ 테이저 부적절: 언어적 위협에 물리력 행사"); }
+        if (Math.random() < 0.60) { ctrlDelta += 14; notes.push("⚡ 테이저 제압 성공: 통제도↑"); }
+        else                      { ctrlDelta -= 8;  notes.push("⚡ 테이저 빗나감: 통제도↓"); }
+      } else if (weaponUsed === "확장형 삼단봉") {
+        legalDelta -= 3;
+        if (Math.random() < 0.70) { ctrlDelta += 9; notes.push("🪃 삼단봉 제압 성공: 통제도↑"); }
+        else                      { ctrlDelta -= 5; notes.push("🪃 삼단봉 제압 실패: 통제도↓"); }
+      } else if (weaponUsed === "경찰 수갑") {
+        legalDelta += 5; ctrlDelta += 5;
+      } else {
+        ctrlDelta += 3; legalDelta += 2;
+      }
+    } else {
+      if (isRadioTurn) {
+        ctrlDelta += 3; legalDelta += 5;
+        if (preNoReport <= 2) { score += 5; scoreEl.textContent = score; notes.push("📡 조기 보고: 훈련점수 +5"); }
+      } else if (/경고|정지|멈춰|손들어|내려놔|엎드려/.test(text)) {
+        ctrlDelta += 4; legalDelta += 5;
+      } else {
+        ctrlDelta += 1;
+      }
+    }
+
+    // 동료 상태 패널티 (결정론적 임계값)
+    if (kimMental <= 40 || kimTrust <= 40) ctrlDelta -= 5;
+    else if (kimMental <= 60 || kimTrust <= 60) ctrlDelta -= 3;
+
+    // 무보고 적법률 패널티
+    if (preNoReport > 3) legalDelta -= 3;
+
+    // 용의자 공격 (확률적 통제도 영향, HP/멘탈은 AI가 담당)
+    const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
+    if (Math.random() < Math.min(0.85, baseProb + (100 - controlRate) / 200)) {
+      const m = suspectInfo.attackMode;
+      if      (m === "physical") ctrlDelta -= randInt(8, 15);
+      else if (m === "verbal")   ctrlDelta -= randInt(3, 6);
+      else if (m === "both")     ctrlDelta -= randInt(8, 15) + randInt(3, 5);
+      else                       ctrlDelta -= (Math.random() < 0.5 ? randInt(8, 15) : randInt(3, 6));
+    }
+
+    controlRate = Math.max(0, Math.min(100, controlRate + ctrlDelta));
+    legalRate   = Math.max(0, Math.min(100, legalRate   + legalDelta));
+
+    if (notes.length > 0) {
+      const nd = document.createElement("div");
+      nd.className = "message ai";
+      nd.style.cssText = "font-size:11px;color:#6b7280;border-left:2px solid #374151;padding:3px 8px;margin:2px 0;";
+      nd.textContent = notes.join(" | ");
+      chatWindow.appendChild(nd);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────
 
   async function handleInputTransmission(inputType) {
     let text = "", prefix = "";
@@ -785,14 +939,29 @@
     // Disable all previous option buttons
     document.querySelectorAll(".option-btn").forEach(btn => { btn.disabled = true; });
 
+    const preNoReport = turnCount - lastReportTurn; // 보고 전 경과 턴 (applyRoundChanges에 전달)
+
     if (inputType === "chat") {
       text = chatInputEl.value.trim();
       if (!text) return;
       const isRadioReport = isRadioMode;
+      // 무보고 4턴 초과이고 이번 턴도 무전 아님 → 서장 호통 게임오버
+      if (preNoReport >= 4 && !isRadioReport) {
+        disableGameInput("보고 불이행");
+        const d = document.createElement("div");
+        d.className = "message ai";
+        d.innerHTML =
+          `<span class="radio-comms">🚨 무전 교신 | 경찰서장: "${player.name} ${player.rank}! 지금 당장 상황 보고가 없는 겁니까?! ` +
+          `${preNoReport}턴째 상황실을 묵살하고 있소! 즉각 현장 지휘권 박탈 명령을 하달하겠소!"</span>` +
+          `<br><p style="color:#ef4444;">⛔ 상황 보고 불이행으로 경찰서장이 직무집행 정지 명령을 내렸습니다.</p>`;
+        chatWindow.appendChild(d);
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        await triggerFinalEvaluation("보고불이행");
+        return;
+      }
       if (isRadioReport || text.includes("보고") || text.includes("상황실")) lastReportTurn = turnCount;
-      prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} 무전보고] ` : `🗣️ [${player.name} ${player.rank} 발언] `;
+      prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} → 112상황실 무전] ` : `🗣️ [${player.name} ${player.rank} 발언] `;
       chatInputEl.value = "";
-      // 무전은 1턴 후 자동 비활성화
       if (isRadioMode) {
         radioUsedThisTurn = true;
         isRadioMode = false;
@@ -804,9 +973,11 @@
       text = actionInputEl.value.trim();
       if (!text) return;
       prefix = currentHoldingWeapon ? `🛡️ [${player.name} ${player.rank} 장구행사 - ${currentHoldingWeapon}] ` : `🛡️ [${player.name} ${player.rank} 전술조치] `;
-      if (currentHoldingWeapon) consumeOneUseWeapon();
       actionInputEl.value = "";
     }
+    // consumeOneUseWeapon 전에 무기명 기록 (applyRoundChanges에 전달)
+    const weaponUsedThisAction = inputType === "action" ? (currentHoldingWeapon || "") : "";
+    if (inputType === "action" && currentHoldingWeapon) consumeOneUseWeapon();
 
     // Check support request
     const supportKeywords = ["추가 지원", "지원 요청", "응원 요청", "백업 요청", "지원을 요청"];
@@ -910,10 +1081,16 @@
         `통제도: ${controlRate}% | 적법률: ${legalRate}% | 유저 체력: ${userHp}% | 유저 멘탈: ${userMental}%\n` +
         `미보고 경과 턴: ${noReportTurns}턴\n\n` +
         `[장구 현황]\n삼단봉 파지: ${isBatonActive ? "활성(공격력↑)" : "미파지"} | 수갑: ${isCuffsActive ? "파지 중" : "미파지"}\n\n` +
-        `[무전 보고 지침]\n` +
+        `[무전 교신 지침]\n` +
         (isRadioTurn
-          ? `이번 턴 훈련자가 112상황실에 무전 보고했다. 🚨 무전 교신에서 "112상황실"이 상황에 맞는 구체적인 지시/응답을 반드시 1회 포함하라. 서장이나 기타 상급자는 2턴 이내 등장 금지.\n`
-          : `이번 턴 무전 보고 없음. 무보고 ${noReportTurns}턴 경과. 3턴 이상이면 상황실 독촉 🚨 무전 교신 포함.\n`) +
+          ? `이번 턴 훈련자가 112상황실에 무전 보고했다.\n` +
+            `🚨 무전 교신에서 반드시 "112상황실 요원"이 육하원칙(언제·어디서·누가·무엇을·어떻게·왜)으로 구체적으로 캐묻는 대사를 포함하라.\n` +
+            `예시: "보고 내용 접수. 용의자가 현재 어디에 있습니까? 흉기 종류가 무엇인지 확인됩니까? 주변 시민 대피는 완료됐습니까?"\n` +
+            `서장 등 상급자는 이번 턴 등장 금지.\n`
+          : `이번 턴 무전 보고 없음. 무보고 ${noReportTurns}턴 경과.\n` +
+            (noReportTurns >= 3
+              ? `상황실이 강하게 독촉하는 🚨 무전 교신 반드시 포함. 예시: "현장에서 보고가 없습니다! 지금 즉시 상황 보고하십시오!"\n`
+              : `무전 교신 없음.\n`)) +
         `\n[동료 행동 반영]\n` +
         `동료가 명령 무시/거부 상태이면 💬에서 해당 동료 거부 대사 포함. 얼어있으면 📝에서 움직이지 못한다고 묘사.\n\n` +
         `[기타 조건]\n` +
@@ -926,7 +1103,7 @@
         `📝 상황 묘사 | (현장 상황)\n` +
         `🟢 점수 변동 | (+N점 또는 변동 없음)\n` +
         `🔴 감점 내역 | (있을 때만)\n` +
-        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N 체력±N / 안정국 멘탈±N 신뢰±N 체력±N / 유저 체력±N 멘탈±N. 변동없으면 생략)\n` +
+        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N 체력±N / 안정국 멘탈±N 신뢰±N 체력±N / 유저 체력±N 멘탈±N. 통제도·적법률 출력 금지. 변동없으면 생략)\n` +
         `🚨 무전 교신 | (조건 해당 시)\n` +
         `📢 시민 상황 | (조건 해당 시)\n` +
         `🎯 추천 선택지 |\n1. (옵션A)\n2. (옵션B)\n3. (옵션C)\n\n` +
@@ -942,21 +1119,8 @@
       if (gainMatch) score += parseInt(gainMatch[1], 10);
       if (lossMatch) score -= parseInt(lossMatch[1], 10);
 
-      // Parse control rate
-      const ctrlAbs = aiReply.match(/통제도\s*(\d+)%/);
-      const ctrlGain = aiReply.match(/통제도\+(\d+)/);
-      const ctrlLoss = aiReply.match(/통제도-(\d+)/);
-      if (ctrlAbs) controlRate = parseInt(ctrlAbs[1], 10);
-      else if (ctrlGain) controlRate = Math.min(100, controlRate + parseInt(ctrlGain[1], 10));
-      else if (ctrlLoss) controlRate = Math.max(0, controlRate - parseInt(ctrlLoss[1], 10));
-
-      // Parse legal rate
-      const legalAbs = aiReply.match(/적법률\s*(\d+)%/);
-      const legalGain = aiReply.match(/적법률\+(\d+)/);
-      const legalLoss = aiReply.match(/적법률-(\d+)/);
-      if (legalAbs) legalRate = parseInt(legalAbs[1], 10);
-      else if (legalGain) legalRate = Math.min(100, legalRate + parseInt(legalGain[1], 10));
-      else if (legalLoss) legalRate = Math.max(0, legalRate - parseInt(legalLoss[1], 10));
+      // 통제도/적법률은 클라이언트 사이드에서 계산 (AI 파싱 없음)
+      applyRoundChanges(inputType, weaponUsedThisAction, isRadioTurn, text, preNoReport);
 
       // Parse colleague stats
       const kM = aiReply.match(/강태구\s*멘탈([-+]\d+)/); if (kM) kimMental = Math.max(10, Math.min(100, kimMental + parseInt(kM[1], 10)));

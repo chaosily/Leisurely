@@ -3,220 +3,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>경찰 초동조치 FTX 시뮬레이터</title>
+  <title>경찰 초동조치 도상훈련 시뮬레이터</title>
   <style>
     :root {
       --bg: #111827;
       --card: #1f2937;
       --text: #f9fafb;
-      --primary: #3b82f6;
-      --primary-h: #60a5fa;
-      --status-bg: #1e3a8a;
-      --status-text: #93c5fd;
+      --primary: #2563eb;
+      --primary-h: #1d4ed8;
+      --status-bg: #111c30;
       --chat-bg: #111827;
-      --border: #4b5563;
+      --border: #374151;
       --user-bg: #1e3a8a;
       --user-text: #eff6ff;
       --ai-bg: #374151;
       --input-bg: #1f2937;
-
       --accent-dialogue: #50e3c2;
       --accent-score: #10b981;
       --accent-penalty: #ef4444;
       --accent-options: #fbbf24;
+      --accent-stat-change: #ff781f;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 20px;
-    }
-
-    .container {
-      max-width: 850px;
-      margin: 0 auto;
-      background: var(--card);
-      padding: 24px;
-      border-radius: 10px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    h2 {
-      color: var(--primary);
-      border-bottom: 2px solid var(--primary);
-      padding-bottom: 10px;
-      margin-bottom: 20px;
-      font-size: 1.25rem;
-    }
-
-    /* ── 로그인 ── */
-    .login-box { display: flex; flex-direction: column; gap: 16px; }
+    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+    .container { max-width: 850px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    h2 { color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.25rem; text-align: center; }
+    .login-box { display: flex; flex-direction: column; gap: 16px; max-width: 420px; margin: 0 auto; padding: 10px 0; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    label { font-weight: bold; font-size: 14px; }
-    label span { font-weight: normal; font-size: 12px; opacity: 0.65; }
-
-    select, input[type="text"] {
-      padding: 10px 12px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--input-bg);
-      color: var(--text);
-      font-size: 14px;
-      width: 100%;
-    }
+    .security-badge { font-size: 11px; background-color: #374151; color: #38bdf8; padding: 4px 8px; border-radius: 4px; font-weight: bold; width: fit-content; margin: 0 auto 10px auto; }
+    label { font-weight: bold; font-size: 14px; color: #9ca3af; }
+    select, input[type="text"] { padding: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); font-size: 14px; width: 100%; }
     select:focus, input:focus { outline: 2px solid var(--primary); }
-
-    button {
-      padding: 12px 24px;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 14px;
-      transition: background 0.2s;
-    }
-    button:hover { background: var(--primary-h); }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    /* ── 시뮬레이터 존 ── */
+    .start-submit-btn { width: 100%; padding: 14px; background-color: var(--primary); border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; margin-top: 8px; }
+    .start-submit-btn:hover { background-color: var(--primary-h); }
     #simulator-zone { display: none; }
 
-    .status-box {
-      background: var(--status-bg);
-      color: var(--status-text);
-      padding: 12px 16px;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      font-weight: bold;
-      font-size: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+    .status-dashboard { background: var(--status-bg); border: 1px solid var(--border); padding: 16px; border-radius: 6px; margin-bottom: 15px; font-size: 13.5px; line-height: 1.6; }
+    .status-top-row { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+    .dispatch-info { color: #cbd5e1; margin-bottom: 10px; font-size: 13px; }
+    .dispatch-info span { color: #38bdf8; font-weight: bold; }
 
-    /* ── 그래픽 플레이스홀더 영역 ── */
-    #pixel-art-zone {
-      width: 100%;
-      height: 50px;
-      border: 1px dashed var(--border);
-      border-radius: 8px;
-      margin-bottom: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #111;
-    }
-    #img-loader {
-      color: var(--status-text);
-      font-size: 12px;
-      font-weight: bold;
-    }
+    .officer-status-box { background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; font-size: 12.5px; border: 1px solid #2d3748; }
+    .officer-line { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .officer-line:last-child { margin-bottom: 0; }
+    .support-eta-line { color: #fbbf24; font-size: 12px; padding: 4px 0; display: none; }
 
-    /* ── 챗봇 타임라인 피드 ── */
-    #chat-window {
-      height: 380px;
-      border: 1px solid var(--border);
-      padding: 15px;
-      overflow-y: auto;
-      background: var(--chat-bg);
-      border-radius: 6px;
-      margin-bottom: 15px;
-      scroll-behavior: smooth;
-    }
-    .message {
-      margin-bottom: 16px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      max-width: 88%;
-      line-height: 1.7;
-      font-size: 14.5px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .gauge-wrapper { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 12.5px; }
+    .gauge-bg { background: #374151; height: 8px; border-radius: 4px; flex: 1; overflow: hidden; }
+    .gauge-fill { height: 100%; width: 100%; transition: width 0.4s ease, background-color 0.3s; }
+    .gauge-fill.normal { background: var(--accent-score); }
+    .gauge-fill.warning { background: var(--accent-penalty); }
+    .gauge-fill.user-hp { background: #ef4444; }
+    .gauge-fill.user-mental { background: #a855f7; }
+    .gauge-fill.user-hp.normal { background: #ef4444; }
+    .gauge-fill.user-mental.normal { background: #a855f7; }
+    .gauge-fill.user-hp.warning { background: #7f1d1d; }
+    .gauge-fill.user-mental.warning { background: #581c87; }
+
+    .inventory-bar { background: #111c30; border: 1px dashed var(--primary); border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+    .inventory-title { font-size: 11px; color: var(--primary-h); font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .inventory-slots { display: flex; gap: 8px; flex-wrap: wrap; }
+    .item-chip { background: #1f2937; border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; font-size: 12px; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+    .item-chip.active { background: #1e3a8a; border-color: #60a5fa; color: #fff; box-shadow: 0 0 6px rgba(96,165,250,0.5); }
+    .item-chip.disabled { opacity: 0.3; cursor: not-allowed; border-color: #1f2937; box-shadow: none; pointer-events: none; }
+    .item-chip::before { content: "■"; font-size: 8px; color: #9ca3af; }
+    .item-chip.active::before { color: #60a5fa; }
+
+    #pixel-art-zone { width: 100%; height: 160px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+    .live-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); border: 1px solid #ef4444; color: #ef4444; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 4px; }
+    #img-loader { color: #4b5563; font-size: 13px; font-weight: bold; }
+    #pixel-art-img { width: 100%; height: 100%; object-fit: contain; display: none; }
+
+    #chat-window { height: 380px; border: 1px solid var(--border); padding: 15px; overflow-y: auto; background: var(--chat-bg); border-radius: 6px; margin-bottom: 15px; scroll-behavior: smooth; }
+    .message { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; max-width: 92%; line-height: 1.7; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
     .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; }
-    .ai   { background: var(--ai-bg); margin-right: auto; }
+    .ai { background: var(--ai-bg); margin-right: auto; }
 
     .story-dialogue { color: var(--accent-dialogue); font-weight: bold; margin-bottom: 6px; display: block; }
-    .story-desc     { color: #e5e7eb; display: block; margin-bottom: 8px; }
-    .story-score    { color: var(--accent-score); font-weight: bold; font-size: 13.5px; display: block; margin-bottom: 6px; }
-    .story-penalty  { color: var(--accent-penalty); font-weight: bold; font-size: 13.5px; display: block; margin-bottom: 6px; }
-    .story-options  { color: var(--accent-options); font-weight: bold; font-size: 13.5px; display: block; border-top: 1px dashed #4b5563; padding-top: 8px; margin-top: 8px; }
+    .story-desc { color: #e5e7eb; display: block; margin-bottom: 8px; }
+    .story-score { color: var(--accent-score); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
+    .story-penalty { color: var(--accent-penalty); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
+    .story-stat-change { color: var(--accent-stat-change); font-weight: bold; font-size: 13px; display: block; margin-bottom: 4px; }
+    .system-alert { color: #ff4545; font-weight: bold; border-left: 3px solid #ff4545; padding-left: 8px; margin: 6px 0; display: block; }
 
-    /* ── 이원화 입력 패널 ── */
-    .dual-input-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: rgba(0, 0, 0, 0.2);
-      padding: 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-    .input-row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .input-label {
-      width: 80px;
-      font-size: 12px;
-      font-weight: bold;
-      color: #9ca3af;
-      text-align: center;
-      flex-shrink: 0;
-    }
+    .interactive-options-container { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 8px; }
+    .option-btn { background: #1f2937; border: 1px solid var(--accent-options); color: #f3f4f6; padding: 10px 14px; border-radius: 6px; text-align: left; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+    .option-btn:hover:not(:disabled) { background: #2d3748; box-shadow: 0 0 6px rgba(251,191,36,0.3); }
+    .option-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #374151; }
 
-    .radio-toggle-btn {
-      padding: 10px 14px;
-      background: #374151;
-      border: 1px solid var(--border);
-      color: #9ca3af;
-      font-size: 13px;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 6px;
-      white-space: nowrap;
-      transition: all 0.2s;
-      flex-shrink: 0;
-    }
-    .radio-toggle-btn.active {
-      background: #065f46;
-      border-color: var(--accent-dialogue);
-      color: #fff;
-      box-shadow: 0 0 8px rgba(80, 227, 194, 0.4);
-    }
-
+    .dual-input-panel { display: flex; flex-direction: column; gap: 12px; background: rgba(0,0,0,0.2); padding: 14px; border-radius: 8px; border: 1px solid var(--border); }
+    .input-row { display: flex; gap: 8px; align-items: center; }
+    .input-label { width: 80px; font-size: 12px; font-weight: bold; color: #9ca3af; text-align: center; flex-shrink: 0; }
+    .weapon-prefix-badge { background: #374151; color: #9ca3af; padding: 6px 10px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); display: none; white-space: nowrap; }
+    .radio-toggle-btn { padding: 10px 14px; background: #374151; border: 1px solid var(--border); color: #9ca3af; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 6px; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
+    .radio-toggle-btn.active { background: #065f46; border-color: var(--accent-dialogue); color: #fff; box-shadow: 0 0 8px rgba(80,227,194,0.4); }
     .dual-input-panel input { flex: 1; }
-    .btn-action-trigger {
-      padding: 10px 18px;
-      font-size: 13px;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
+    .btn-action-trigger { padding: 10px 18px; font-size: 13px; white-space: nowrap; flex-shrink: 0; background: #374151; border: 1px solid var(--border); color: white; border-radius: 6px; cursor: pointer; }
+    .btn-action-trigger:hover { background: #4b5563; }
+    .btn-action-primary { background: var(--primary) !important; border-color: var(--primary) !important; }
   </style>
 </head>
 <body>
-
 <div class="container">
 
-  <!-- ── 로그인 존 ── -->
   <div id="login-zone">
-    <h2>경찰 초동조치 시뮬레이터 — 로그인</h2>
+    <div class="security-badge">🔒 HARDCORE PROTOTYPE v2.0</div>
+    <h2>경찰 초동조치 도상훈련 시스템</h2>
     <div class="login-box">
       <div class="form-group">
-        <label>성명</label>
-        <input type="text" id="user-name" placeholder="홍길동" />
-      </div>
-
-      <div class="form-group">
-        <label>계급</label>
+        <label>🎖️ 계급 선택</label>
         <select id="user-rank">
-          <option value="순경">순경</option>
+          <option value="순경" selected>순경</option>
           <option value="경장">경장</option>
           <option value="경사">경사</option>
           <option value="경위">경위</option>
@@ -224,53 +122,120 @@
           <option value="경정">경정</option>
         </select>
       </div>
-
       <div class="form-group">
-        <label>소속 부서 <span>(시나리오 분기)</span></label>
-        <select id="user-dept">
-          <option value="지구대 파출소">지구대·파출소 (현장 제지 중심)</option>
-          <option value="형사과">형사과 (강력범죄 제압 중심)</option>
-          <option value="112 타격대">112 타격대 (대테러 작전 통제 중심)</option>
+        <label>👤 성명</label>
+        <input type="text" id="user-name" placeholder="이름을 입력하세요" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>🗺️ 근무 관할지</label>
+        <select id="user-jurisdiction">
+          <option value="">-- 관할지 선택 --</option>
+          <option value="서울특별시 강남구">서울특별시 강남구</option>
+          <option value="서울특별시 마포구">서울특별시 마포구</option>
+          <option value="서울특별시 종로구">서울특별시 종로구</option>
+          <option value="서울특별시 노원구">서울특별시 노원구</option>
+          <option value="부산광역시 해운대구">부산광역시 해운대구</option>
+          <option value="부산광역시 남구">부산광역시 남구</option>
+          <option value="대구광역시 중구">대구광역시 중구</option>
+          <option value="인천광역시 남동구">인천광역시 남동구</option>
+          <option value="경기도 수원시">경기도 수원시</option>
+          <option value="경기도 성남시">경기도 성남시</option>
+          <option value="충북 제천시">충북 제천시</option>
+          <option value="충남 천안시">충남 천안시</option>
+          <option value="전북 전주시">전북 전주시</option>
+          <option value="광주광역시 북구">광주광역시 북구</option>
+          <option value="대전광역시 유성구">대전광역시 유성구</option>
         </select>
       </div>
-
-      <button id="login-btn">FTX 시뮬레이션 시작</button>
+      <div class="form-group">
+        <label>🔑 Gemini API 키</label>
+        <input type="text" id="gemini-key" placeholder="AQ.Ab8... 형식의 API 키 입력" autocomplete="off" />
+      </div>
+      <button id="login-btn" class="start-submit-btn">도상훈련 시작 (집행)</button>
     </div>
   </div>
 
-  <!-- ── 시뮬레이터 존 ── -->
   <div id="simulator-zone">
-    <h2>FTX 시뮬레이터</h2>
+    <h2>112 상황 대응 도상훈련 시스템</h2>
 
-    <div class="status-box">
-      <div>훈련관: <span id="player-info"></span></div>
-      <div>현재 진행: <span id="current-stage">1 / 10 턴</span></div>
-      <div>훈련 점수: <span id="current-score" style="color: var(--accent-score);">0</span> 점</div>
+    <div class="status-dashboard">
+      <div class="status-top-row">
+        <div>👮 출동대원: <span id="player-info" style="color:#60a5fa;"></span></div>
+        <div>⏳ <span id="current-stage">1 / 20 턴</span></div>
+        <div>💯 훈련점수: <span id="current-score" style="color:var(--accent-score);">0</span> 점</div>
+      </div>
+
+      <div class="dispatch-info">
+        🚨 <span>사건번호:</span> <span id="dispatch-case-num">-</span> (코드 제로) | 📍 <span>현장:</span> <span id="dispatch-location">-</span><br>
+        📅 <span>일시:</span> <span id="dispatch-date">-</span> | 🕒 <span>상황 시각:</span> <span id="dispatch-time">-</span> | ⏱️ <span>경과:</span> <span id="elapsed-time" style="color:#ef4444;font-weight:bold;">00분 00초</span><br>
+        ⚠️ <span>용의자 특성:</span> <span id="suspect-type" style="color:#ff4545;font-weight:bold;">[파악 중]</span>
+      </div>
+
+      <div class="officer-status-box">
+        <div class="officer-line" id="officer-kim-row">
+          <span>👮 경사 강태구: <span id="mental-kim" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-kim" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span> <span id="talk-kim"></span></span>
+        </div>
+        <div class="officer-line" id="officer-lee-row" style="display:none;">
+          <span>👮 경장 안정국: <span id="mental-lee" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-lee" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span> <span id="talk-lee"></span></span>
+        </div>
+        <div class="support-eta-line" id="support-eta-line">
+          ⏳ 추가 지원 출동 중... (<span id="support-eta-count">2</span>턴 후 도착 예정)
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="gauge-wrapper">
+          <span style="white-space:nowrap;">🚨 통제도: <span id="txt-control">65%</span></span>
+          <div class="gauge-bg"><div id="bar-control" class="gauge-fill normal" style="width:65%;"></div></div>
+        </div>
+        <div class="gauge-wrapper">
+          <span style="white-space:nowrap;">⚖️ 적법률: <span id="txt-legal">90%</span></span>
+          <div class="gauge-bg"><div id="bar-legal" class="gauge-fill normal" style="width:90%;"></div></div>
+        </div>
+        <div class="gauge-wrapper">
+          <span style="white-space:nowrap;">❤️ 체력: <span id="txt-user-hp">100%</span></span>
+          <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
+        </div>
+        <div class="gauge-wrapper">
+          <span style="white-space:nowrap;">🧠 멘탈: <span id="txt-user-mental">100%</span></span>
+          <div class="gauge-bg"><div id="bar-user-mental" class="gauge-fill user-mental normal" style="width:100%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="inventory-bar">
+      <div class="inventory-title">■ INITIAL ESSENTIAL EQUIPMENT (출동 대원 장구류 파지 패널)</div>
+      <div class="inventory-slots">
+        <div id="item-pistol" class="item-chip" onclick="selectWeapon(this,'3.8구경 권총')">3.8구경 권총</div>
+        <div id="item-taser" class="item-chip" onclick="selectWeapon(this,'테이저건')">테이저건</div>
+        <div id="item-baton" class="item-chip" onclick="selectWeapon(this,'확장형 삼단봉')">확장형 삼단봉</div>
+        <div id="item-cuffs" class="item-chip" onclick="selectWeapon(this,'경찰 수갑')">경찰 수갑</div>
+        <div id="item-armor" class="item-chip" onclick="toggleArmor(this)">간이 방검복 (착용 가능)</div>
+      </div>
     </div>
 
     <div id="pixel-art-zone">
-      <span id="img-loader">[ FTX 전술 무전 수신기 연동 안정화 완료 ]</span>
+      <div class="live-badge">📡 112 상황실 CCTV 현장 연동</div>
+      <span id="img-loader">[ 현장 영상 로딩 대기 중... ]</span>
+      <img id="pixel-art-img" src="" alt="현장 이미지" />
     </div>
 
-    <div id="chat-window">
-      <div id="initial-ai-msg" class="message ai"></div>
-    </div>
+    <div id="chat-window"></div>
 
     <div class="dual-input-panel">
       <div class="input-row">
         <div class="input-label">🗣️ 대화/무전</div>
         <button id="radio-toggle" class="radio-toggle-btn">무전 OFF</button>
-        <input type="text" id="chat-input" placeholder="현장 인물에게 할 대사를 입력하거나 상황실 보고 내용을 입력하세요..." />
+        <input type="text" id="chat-input" placeholder="동료 무전 또는 피의자 설득 대사 입력..." />
         <button id="send-chat-btn" class="btn-action-trigger">전송</button>
       </div>
-
       <div class="input-row">
         <div class="input-label">🛡️ 현장조치</div>
-        <input type="text" id="action-input" placeholder="삼단봉 전개, 테이저건 거치 등 물리적/행동 전술 조치를 입력하세요..." />
-        <button id="send-action-btn" class="btn-action-trigger" style="background: #2563eb;">집행</button>
+        <div id="weapon-prefix" class="weapon-prefix-badge"></div>
+        <input type="text" id="action-input" placeholder="전술 제압 명령 또는 방어선 구축 전술 입력..." />
+        <button id="send-action-btn" class="btn-action-trigger btn-action-primary">집행</button>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -278,39 +243,76 @@
 (function () {
   "use strict";
 
-  const SUPABASE_URL  = "https://wmddgsghfbnqtotyfjxt.supabase.co";
-  const SUPABASE_KEY  = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
-  const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-  const GROQ_MODEL    = "llama-3.1-8b-instant";
-  const GROQ_API_KEY  = "GROQ_KEY_PLACEHOLDER";
+  const SUPABASE_URL = "https://wmddgsghfbnqtotyfjxt.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
+  let GEMINI_API_KEY = "";
 
-  let player      = { name: "", rank: "", dept: "" };
-  let score       = 0;
-  let turnCount   = 1;
-  let chatHistory = [];
-  let isRadioMode = false;
-
-  const DEPT_CONFIG = {
-    "지구대 파출소": {
-      situation: (rank) =>
-        `💬 현장 상황 | "어어, 저리 가! 가까이 오면 다 찔러 버린다!"\n\n` +
-        `📝 상황 묘사 | 주택가 골목길에서 흉기를 든 주취자가 난동을 부리며 주민들을 위협 중입니다. 순찰차가 선착한 상태에서 피의자가 피 묻은 칼을 쥐고 다가옵니다. ${rank} 님, 첫 번째 전술 조치나 대화 지시를 내려주십시오.\n\n` +
-        `🎯 추천 선택지 | 1. 테이저건 조준 후 안전거리 유지 조치 / 2. 대화 입력창을 켜고 자극하지 않는 설득 시도 / 3. 무전 토글을 켜고 상황실에 112 추가 기동 지원 요청`,
-    },
-    "형사과": {
-      situation: (rank) =>
-        `💬 현장 상황 | "안에 누군가 비명을 질렀어요! 빨리 문 부수고 들어가야 해요!"\n\n` +
-        `📝 상황 묘사 | 강력 피의자가 은신 중인 모텔방 앞에 도착했습니다. 안에서 둔탁한 소리와 인질의 비명이 터져 나옵니다. 형사과 ${rank} 님, 문 앞 포위 상황에서 어떤 조치를 발동하시겠습니까?\n\n` +
-        `🎯 추천 선택지 | 1. 조치창에 문을 박차고 즉각 진입 기동 지시 / 2. 대화창으로 내부 피의자에게 인질 해방 유도 협상 대사 전달 / 3. 무전 모드로 소방 구급대 긴급 강제 개방 및 구급 지원 요청`,
-    },
-    "112 타격대": {
-      situation: (rank) =>
-        `💬 상황실 무전 | "비행 금지 구역 내 정체불명의 개조 드론 탐지. 전원 대공 요격 및 조종자 수색 태세 돌입하라."\n\n` +
-        `📝 상황 묘사 | 국가 중요 시설 경계 구역 내로 정찰 목적이 의심되는 미상 드론이 고도를 낮춰 진입했습니다. 조종자로 추정되는 인물이 숲속 내부로 은밀히 도주하는 징후가 잡혔습니다. 타격대 ${rank} 님, 조치를 내려주십시오.\n\n` +
-        `🎯 추천 선택지 | 1. 조치창에 안티드론 재밍건 전개 및 가동 명령 / 2. 무전 모드로 인근 대대 및 소속 기동대에 주변 락다운 조치 무전 보고 / 3. 대화창으로 주변 경계 인원들에게 긴급 도보 수색 명령 전달`,
-    },
+  const JURISDICTION_MAP = {
+    "서울특별시 강남구": ["테헤란로 삼성역 인근 골목", "역삼동 먹자골목 뒷골목", "강남대로 번화가 노상", "청담동 고급 주택가"],
+    "서울특별시 마포구": ["홍대입구 클럽거리", "합정역 주변 상가 골목", "망원동 주택가 이면도로", "연남동 공원 인근"],
+    "서울특별시 종로구": ["인사동 골동품 거리", "종로3가 유흥가 골목", "익선동 한옥마을 인근", "창신동 봉제거리"],
+    "서울특별시 노원구": ["노원역 역세권 상가", "중계동 학원가 골목", "상계동 재래시장"],
+    "부산광역시 해운대구": ["해운대 해수욕장 인근", "센텀시티 상업지구", "좌동 아파트 단지 골목", "중동 해변로"],
+    "부산광역시 남구": ["용호동 해안로", "대연동 대학가 주변", "문현동 금융가 이면도로"],
+    "대구광역시 중구": ["동성로 번화가", "서문시장 인근 골목", "삼덕동 주택가", "대구역 주변 상가"],
+    "인천광역시 남동구": ["구월동 로데오거리", "만수동 주택가 골목", "간석동 재래시장 인근"],
+    "경기도 수원시": ["팔달문 시장 골목", "수원역 역세권 상가", "인계동 유흥가", "영통동 아파트 단지"],
+    "경기도 성남시": ["모란시장 인근", "분당 정자동 카페거리", "야탑역 주변 상가"],
+    "충북 제천시": ["중앙로 상가 밀집 지역", "의림지 주변 공원", "청전동 주택가 골목", "화산동 재래시장"],
+    "충남 천안시": ["신부동 번화가", "불당동 주거단지", "천안역 주변 상가"],
+    "전북 전주시": ["한옥마을 인근 골목", "서신동 상업지구", "효자동 주택가 이면도로"],
+    "광주광역시 북구": ["용봉동 대학가", "운암동 아파트 단지", "오치동 주택가 골목"],
+    "대전광역시 유성구": ["궁동 대학가 술집 거리", "노은동 상업지구", "관평동 주택가"],
   };
 
+  const SUSPECT_POOL = [
+    { type: "강자형", desc: "물리적 저항 극심", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음." },
+    { type: "사이코형", desc: "예측 불가 행동", arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 언어적 설득이 역효과 날 수 있음. 선제 자극 금지." },
+    { type: "교활형", desc: "심리적 조종 시도", arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적. 대화로 시간 끌기 금지." },
+  ];
+
+  const KIM_TALK_POOL = {
+    danger: ["이건 절대 따를 수 없습니다. 제가 직접 상황실에 보고하겠습니다!", "동료로서 더 이상 이 행동을 방관할 수 없습니다!"],
+    warning: ["용의자 반발심이 올라가고 있습니다. 장구 자세 유지하세요!", "통제선이 흔들립니다. 신속히 결정해야 합니다."],
+    ignore: ["...죄송합니다, 지금 움직이기가 어렵습니다.", "...명령은 들었습니다만 선뜻 나서기 어렵습니다."],
+    safe: ["안정적으로 압박 중입니다. 수갑 채비 완료했습니다.", "침착하게 진입각 확보하겠습니다."]
+  };
+  const LEE_TALK_POOL = {
+    danger: ["이건 명백한 매뉴얼 위반입니다! 중단하지 않으면 저도 대응하겠습니다!", "저는 이 명령에 따를 수 없습니다!"],
+    warning: ["상황실 보고가 계속 독촉되고 있습니다!", "통제선 구축 인력이 턱없이 부족합니다!"],
+    ignore: ["...지금 정신이 없어서요. 잠깐만요.", "...발이 떨어지질 않습니다."],
+    safe: ["시민 저항선 차단 완료. 용의자 고립시켰습니다.", "현 상황실 지침대로 진행 중입니다."]
+  };
+
+  // State
+  let player = { name: "", rank: "" };
+  let score = 0;
+  let controlRate = 65;
+  let legalRate = 90;
+  let turnCount = 1;
+  let isRadioMode = false;
+  let currentTotalSeconds = 0;
+  let isArmorEquipped = false;
+  let currentHoldingWeapon = "";
+  let suspectInfo = null;
+  let lastReportTurn = 0;
+  let currentLocation = "";
+  let selectedJurisdiction = "";
+
+  // User stats
+  let userHp = 100;
+  let userMental = 100;
+
+  // Colleague stats (randomized 60-90 at login)
+  let kimMental = 0, kimTrust = 0;
+  let leeMental = 0, leeTrust = 0;
+
+  // Support system
+  let supportRequested = false;
+  let supportArrivalTurn = -1;
+  let supportArrived = false;
+
+  // DOM refs
   const loginZone      = document.getElementById("login-zone");
   const simZone        = document.getElementById("simulator-zone");
   const loginBtn       = document.getElementById("login-btn");
@@ -323,7 +325,57 @@
   const scoreEl        = document.getElementById("current-score");
   const stageEl        = document.getElementById("current-stage");
   const playerInfoEl   = document.getElementById("player-info");
-  const initialMsgEl   = document.getElementById("initial-ai-msg");
+  const elapsedTimeEl  = document.getElementById("elapsed-time");
+  const suspectTypeEl  = document.getElementById("suspect-type");
+  const weaponPrefixEl = document.getElementById("weapon-prefix");
+  const txtControl     = document.getElementById("txt-control");
+  const barControl     = document.getElementById("bar-control");
+  const txtLegal       = document.getElementById("txt-legal");
+  const barLegal       = document.getElementById("bar-legal");
+  const imgLoader      = document.getElementById("img-loader");
+  const pixelArtImg    = document.getElementById("pixel-art-img");
+  const officerLeeRow  = document.getElementById("officer-lee-row");
+  const supportEtaLine = document.getElementById("support-eta-line");
+  const supportEtaCount= document.getElementById("support-eta-count");
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  function getCurrentDateInfo() {
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const mi = String(now.getMinutes()).padStart(2, '0');
+    const caseNum = `${y}-${mo}${d}-${String(randInt(1, 999)).padStart(3, '0')}`;
+    return { date: `${y}.${mo}.${d}`, time: `${h}:${mi}`, caseNum };
+  }
+
+  async function fetchGeminiResponse(userMessage, systemPrompt) {
+    try {
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": GEMINI_API_KEY },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: "user", parts: [{ text: userMessage }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 4096 }
+          })
+        }
+      );
+      const data = await response.json();
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      }
+      console.error("API 구조 에러:", data);
+      return "상황실 망에서 예상치 못한 응답이 반환되었습니다.";
+    } catch (error) {
+      console.error("Gemini API 에러:", error);
+      return "상황실 무전망에 일시적인 네트워크 오류가 발생했습니다.";
+    }
+  }
 
   loginBtn.addEventListener("click", handleLogin);
   sendChatBtn.addEventListener("click", () => handleInputTransmission("chat"));
@@ -336,235 +388,466 @@
     if (isRadioMode) {
       radioToggleBtn.classList.add("active");
       radioToggleBtn.textContent = "무전 ON";
-      chatInputEl.placeholder = "[무전 모드 활성화] 상황실이나 동료 경찰관에게 하달할 무전 내용을 입력하세요...";
+      chatInputEl.placeholder = "[무전] 상황실 또는 출동망 교신 내용 입력...";
     } else {
       radioToggleBtn.classList.remove("active");
       radioToggleBtn.textContent = "무전 OFF";
-      chatInputEl.placeholder = "현장 인물에게 할 대사를 입력하거나 상황실 보고 내용을 입력하세요...";
+      chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
     }
   });
 
-  function handleLogin() {
+  window.selectWeapon = function(element, itemName) {
+    if (element.classList.contains("disabled")) return;
+    document.querySelectorAll(".inventory-slots .item-chip:not(#item-armor)").forEach(c => c.classList.remove("active"));
+    if (currentHoldingWeapon === itemName) {
+      currentHoldingWeapon = "";
+      weaponPrefixEl.style.display = "none";
+    } else {
+      currentHoldingWeapon = itemName;
+      element.classList.add("active");
+      weaponPrefixEl.textContent = `${itemName} 파지 후`;
+      weaponPrefixEl.style.display = "block";
+    }
+    actionInputEl.focus();
+  };
+
+  window.toggleArmor = function(element) {
+    isArmorEquipped = !isArmorEquipped;
+    element.classList.toggle("active", isArmorEquipped);
+    element.textContent = isArmorEquipped ? "간이 방검복 (착용 상태)" : "간이 방검복 (착용 가능)";
+  };
+
+  function consumeCurrentWeapon() {
+    if (!currentHoldingWeapon) return;
+    const idMap = { "3.8구경 권총": "item-pistol", "테이저건": "item-taser", "확장형 삼단봉": "item-baton", "경찰 수갑": "item-cuffs" };
+    const id = idMap[currentHoldingWeapon];
+    if (id) {
+      const el = document.getElementById(id);
+      el.classList.remove("active");
+      el.classList.add("disabled");
+      el.onclick = null;
+    }
+    currentHoldingWeapon = "";
+    weaponPrefixEl.style.display = "none";
+  }
+
+  async function handleLogin() {
     const name = document.getElementById("user-name").value.trim();
     const rank = document.getElementById("user-rank").value;
-    const dept = document.getElementById("user-dept").value;
+    const jurisdiction = document.getElementById("user-jurisdiction").value;
 
-    if (!name) { alert("성명을 정확히 기재해 주십시오."); return; }
+    const apiKey = document.getElementById("gemini-key").value.trim();
+    if (!name) { alert("성명을 입력해 주십시오."); return; }
+    if (!jurisdiction) { alert("근무 관할지를 선택해 주십시오."); return; }
+    if (!apiKey) { alert("Gemini API 키를 입력해 주십시오."); return; }
+    GEMINI_API_KEY = apiKey;
 
-    player = { name, rank, dept };
-    loginZone.style.display  = "none";
-    simZone.style.display    = "block";
-    playerInfoEl.textContent = `${dept} ${name} ${rank}`;
+    player = { name, rank };
+    selectedJurisdiction = jurisdiction;
 
-    const config   = DEPT_CONFIG[dept] || DEPT_CONFIG["지구대 파출소"];
-    const startMsg = config.situation(rank);
+    const locations = JURISDICTION_MAP[jurisdiction];
+    currentLocation = locations[randInt(0, locations.length - 1)];
+
+    suspectInfo = SUSPECT_POOL[randInt(0, SUSPECT_POOL.length - 1)];
+    suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]`;
+
+    kimMental = randInt(60, 90);
+    kimTrust  = randInt(60, 90);
+
+    const dtInfo = getCurrentDateInfo();
+    currentTotalSeconds = 0;
+
+    document.getElementById("dispatch-case-num").textContent = dtInfo.caseNum;
+    document.getElementById("dispatch-date").textContent = dtInfo.date;
+    document.getElementById("dispatch-time").textContent = dtInfo.time;
+    document.getElementById("dispatch-location").textContent = currentLocation;
+
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name, rank, jurisdiction })
+      });
+    } catch (e) { console.warn("Supabase 로그 실패:", e.message); }
+
+    loginZone.style.display = "none";
+    simZone.style.display = "block";
+    playerInfoEl.textContent = `${name} ${rank} (${jurisdiction})`;
+
+    updateStatusBars();
+    updatePixelArt(1);
+
+    const startMsg =
+      `💬 현장 대사 | 피의자 [${suspectInfo.type}]: "크크크... 더 다가와 봐, 어디 한 번 날 건드려 보라고!"\n\n` +
+      `📝 상황 묘사 | ${selectedJurisdiction} ${currentLocation}에서 강력 코드제로 대치 상황이 발생했습니다. ${name} ${rank}은 경사 강태구와 함께 현장에 출동했습니다. 용의자는 [${suspectInfo.type}] 성향으로 흉기를 고쳐 쥐고 대치 라인을 위협합니다. 주변 시민 난입으로 저지선이 불안정한 상태입니다.\n\n` +
+      `🎯 추천 선택지 |\n1. 📢 경사 강태구에게 거리 유지를 지시하며, 상황실에 코드제로 현황을 무전 보고한다.\n2. 🛡️ 확장형 삼단봉을 파지하여 강태구 경사와 연동 저지망을 구축한다.\n3. ⚡ 무전 토글을 활성화하고 상황실에 피의자 무기 대치 상황을 즉시 전파한다.`;
 
     formatAndAppendMessage(startMsg, "ai");
-    chatHistory.push({ role: "assistant", content: startMsg });
+    lastReportTurn = 1;
+  }
+
+  function updatePixelArt(stageNum) {
+    imgLoader.style.display = "none";
+    pixelArtImg.style.display = "block";
+    pixelArtImg.src = `https://picsum.photos/seed/police_${selectedJurisdiction.replace(/ /g,'_')}_${stageNum}/800/160`;
+  }
+
+  function formatElapsedTime() {
+    const mins = Math.floor(currentTotalSeconds / 60);
+    const secs = currentTotalSeconds % 60;
+    elapsedTimeEl.textContent = `${String(mins).padStart(2,'0')}분 ${String(secs).padStart(2,'0')}초`;
+  }
+
+  function getOfficerState(mental, trust) {
+    if (mental <= 40 || trust <= 40) return "danger";
+    if (mental <= 60 || trust <= 60) return "warning";
+    return "safe";
+  }
+
+  function shouldIgnore(trust) {
+    // Low trust = higher ignore chance
+    if (trust <= 40) return Math.random() < 0.6;
+    if (trust <= 60) return Math.random() < 0.3;
+    return Math.random() < 0.05;
+  }
+
+  function shouldFreeze(mental) {
+    // Low mental = higher freeze chance
+    if (mental <= 40) return Math.random() < 0.5;
+    if (mental <= 60) return Math.random() < 0.2;
+    return false;
+  }
+
+  function updateOfficerUI(prefix, mental, trust, pool) {
+    const mentalEl = document.getElementById(`mental-${prefix}`);
+    const trustEl  = document.getElementById(`trust-${prefix}`);
+    const talkEl   = document.getElementById(`talk-${prefix}`);
+    if (!mentalEl) return;
+
+    mentalEl.textContent = `[멘탈 ${mental}]`;
+    trustEl.textContent  = `[신뢰 ${trust}]`;
+
+    const state = getOfficerState(mental, trust);
+    const color = state === "safe" ? { m: "#60a5fa", t: "#a855f7" } : state === "warning" ? { m: "#fbbf24", t: "#fbbf24" } : { m: "#ef4444", t: "#ef4444" };
+    mentalEl.style.color = color.m;
+    trustEl.style.color  = color.t;
+
+    let talkState = state;
+    if (shouldFreeze(mental)) talkState = "ignore";
+    else if (shouldIgnore(trust)) talkState = "ignore";
+
+    const lines = pool[talkState];
+    talkEl.textContent = `"${lines[randInt(0, lines.length - 1)]}"`;
+  }
+
+  function updateStatusBars() {
+    txtControl.textContent = `${controlRate}%`;
+    barControl.style.width = `${controlRate}%`;
+    barControl.className = controlRate <= 50 ? "gauge-fill warning" : "gauge-fill normal";
+
+    txtLegal.textContent = `${legalRate}%`;
+    barLegal.style.width = `${legalRate}%`;
+    barLegal.className = legalRate <= 50 ? "gauge-fill warning" : "gauge-fill normal";
+
+    document.getElementById("txt-user-hp").textContent = `${userHp}%`;
+    const barHp = document.getElementById("bar-user-hp");
+    barHp.style.width = `${userHp}%`;
+    barHp.className = userHp <= 30 ? "gauge-fill user-hp warning" : "gauge-fill user-hp normal";
+
+    document.getElementById("txt-user-mental").textContent = `${userMental}%`;
+    const barMental = document.getElementById("bar-user-mental");
+    barMental.style.width = `${userMental}%`;
+    barMental.className = userMental <= 30 ? "gauge-fill user-mental warning" : "gauge-fill user-mental normal";
+
+    updateOfficerUI("kim", kimMental, kimTrust, KIM_TALK_POOL);
+    if (supportArrived) updateOfficerUI("lee", leeMental, leeTrust, LEE_TALK_POOL);
   }
 
   async function fetchLawContext(userText) {
     let keyword = "경찰관 직무집행법";
     if (userText.includes("칼") || userText.includes("흉기") || userText.includes("권총")) keyword = "무기 사용";
-    if (userText.includes("테이저") || userText.includes("삼단봉") || userText.includes("수갑")) keyword = "경찰장구";
-    if (userText.includes("진입") || userText.includes("수색") || userText.includes("모텔")) keyword = "출입";
-    if (userText.includes("무전") || userText.includes("보고") || userText.includes("지원")) keyword = "작전통제";
-
+    if (userText.includes("테이저") || userText.includes("삼단봉")) keyword = "경찰장구";
     try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/law-rag`, {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/law-rag`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-        },
-        body: JSON.stringify({ keyword }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SUPABASE_KEY}` },
+        body: JSON.stringify({ keyword })
       });
-      if (!response.ok) return "";
-      const result = await response.json();
-      if (result.success && result.data) {
-        const lawList = result.data?.LawSearch?.law;
-        if (lawList && lawList.length > 0) {
-          let lawArticles = "";
-          const maxArticles = Math.min(lawList.length, 2);
-          for (let i = 0; i < maxArticles; i++) {
-            const lawName = lawList[i]["법령명칭"] || lawList[i]["법령명"] || "경찰관 직무집행법";
-            const content = lawList[i]["조문내용"] || lawList[i]["본문"] || "내용 생략";
-            lawArticles += `\n[${lawName}] ${content}`;
-          }
-          return `\n\n[실시간 법제처 국가법령 지침]:\n${lawArticles}`;
-        }
+      if (!res.ok) return "";
+      const result = await res.json();
+      if (result.success && result.data?.LawSearch?.law?.[0]) {
+        const law = result.data.LawSearch.law[0];
+        return `\n\n[관련 법령]: [${law["법령명칭"] || "경찰관 직무집행법"}] ${law["조문내용"] || ""}`;
       }
       return "";
-    } catch (e) {
-      return "";
-    }
+    } catch { return ""; }
+  }
+
+  window.selectOptionOption = function(optionText, isAction) {
+    if (isAction) { actionInputEl.value = optionText; handleInputTransmission("action"); }
+    else { chatInputEl.value = optionText; handleInputTransmission("chat"); }
+  };
+
+  function triggerGameOver(reasonText) {
+    stageEl.textContent = "훈련 중단";
+    sendChatBtn.disabled = true;
+    sendActionBtn.disabled = true;
+    chatInputEl.disabled = true;
+    actionInputEl.disabled = true;
+    const div = document.createElement("div");
+    div.className = "message ai";
+    div.innerHTML = `<span class="system-alert">🚨 도상훈련 강제 종료 (GAME OVER)</span><br><p>${reasonText}</p><br><p style="color:#fbbf24;">최종 훈련 점수: <strong>${score}점</strong></p>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
   }
 
   async function handleInputTransmission(inputType) {
-    let text   = "";
-    let prefix = "";
+    let text = "", prefix = "";
+
+    // Disable all previous option buttons
+    document.querySelectorAll(".option-btn").forEach(btn => { btn.disabled = true; });
 
     if (inputType === "chat") {
       text = chatInputEl.value.trim();
       if (!text) return;
-      prefix = (isRadioMode || text.startsWith("/무전")) ? "⚡ [무전 전송] " : "🗣️ [현장 발언] ";
-      if (text.startsWith("/무전")) text = text.replace("/무전", "").trim();
+      if (text.includes("보고") || text.includes("상황실")) lastReportTurn = turnCount;
+      prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} 무전] ` : `🗣️ [${player.name} ${player.rank} 발언] `;
       chatInputEl.value = "";
     } else {
       text = actionInputEl.value.trim();
       if (!text) return;
-      prefix = "🛡️ [현장 전술 조치] ";
+      prefix = currentHoldingWeapon ? `🛡️ [${player.name} ${player.rank} 장구행사 - ${currentHoldingWeapon}] ` : `🛡️ [${player.name} ${player.rank} 전술조치] `;
+      if (currentHoldingWeapon) consumeCurrentWeapon();
       actionInputEl.value = "";
     }
 
-    const fullUserText = prefix + text;
-    appendMessage(fullUserText, "user");
-    chatHistory.push({ role: "user", content: fullUserText });
+    // Check support request
+    const supportKeywords = ["추가 지원", "지원 요청", "응원 요청", "백업 요청", "지원을 요청"];
+    if (!supportRequested && supportKeywords.some(k => text.includes(k))) {
+      supportRequested = true;
+      supportArrivalTurn = turnCount + 2;
+      supportEtaLine.style.display = "block";
+      supportEtaCount.textContent = "2";
+    }
 
-    sendChatBtn.disabled  = true;
+    const fullText = prefix + text;
+    appendMessage(fullText, "user");
+
+    sendChatBtn.disabled = true;
     sendActionBtn.disabled = true;
-    const loadingDiv = appendMessage("상황 분석 및 교관 피드백 빌드 중...", "ai");
+    const loadingDiv = appendMessage("종합 치안 상황 분석 중...", "ai");
+
+    currentTotalSeconds += randInt(70, 120);
+    formatElapsedTime();
+
+    // Check if support arrives this turn
+    let supportArrivalMsg = "";
+    if (supportRequested && !supportArrived && turnCount >= supportArrivalTurn) {
+      supportArrived = true;
+      leeMental = randInt(60, 90);
+      leeTrust  = randInt(60, 90);
+      officerLeeRow.style.display = "flex";
+      supportEtaLine.style.display = "none";
+      updateOfficerUI("lee", leeMental, leeTrust, LEE_TALK_POOL);
+      supportArrivalMsg = `\n🚨 무전 교신 | 경장 안정국: "지원 출동 완료! 현장 도착했습니다, 지시 기다립니다!"`;
+    } else if (supportRequested && !supportArrived) {
+      supportEtaCount.textContent = String(supportArrivalTurn - turnCount);
+    }
+
+    if (turnCount >= 20) {
+      loadingDiv.remove();
+      const finalMsg =
+        `📝 상황 묘사 | 20턴 종료. 도상훈련 전 과정을 완료했습니다.\n\n` +
+        `🏆 [도상훈련 최종 성적]\n` +
+        `- 훈련 대원: ${player.name} ${player.rank}\n` +
+        `- 관할지: ${selectedJurisdiction}\n` +
+        `- 현장: ${currentLocation}\n` +
+        `- 용의자 성향: ${suspectInfo.type}\n` +
+        `- 최종 점수: ${score}점\n` +
+        `- 현장 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
+        `- 체력: ${userHp}% | 멘탈: ${userMental}%`;
+      formatAndAppendMessage(finalMsg, "ai");
+      stageEl.textContent = "훈련 완료";
+      return;
+    }
 
     try {
       const lawContext = await fetchLawContext(text);
+      const kimIgnore = shouldIgnore(kimTrust);
+      const kimFreeze = shouldFreeze(kimMental);
+      const leeIgnore = supportArrived && shouldIgnore(leeTrust);
+      const leeFreeze = supportArrived && shouldFreeze(leeMental);
+      const noReportTurns = turnCount - lastReportTurn;
 
       const systemPrompt =
-        `너는 크랙(CRACK) 플랫폼의 텍스트 기반 인터랙티브 스토리 경찰 시뮬레이션의 마스터 오퍼레이터다.\n` +
-        `피훈련자 정보: 소속 [${player.dept}], 계급 [${player.rank}], 성명 [${player.name}], 현재 진행 [${turnCount} / 10 턴].\n\n` +
-        `[입력 분석 규칙]\n` +
-        `- '⚡ [무전 전송]' 규격: 상황실/무전망 반응을 대사로 출력하라.\n` +
-        `- '🛡️ [현장 전술 조치]' 규격: 소지 장구(3.8권총, 테이저건, 삼단봉, 수갑) 활용 여부 및 물리력 집행 적정성을 판단하라.\n\n` +
-        `[출력 마크업 약속]\n` +
-        `반드시 아래 분류 코드로 줄바꿈 처리하여 응답하라:\n` +
-        `- 💬 현장 상황 | (무전음성, 피의자 대사, 혹은 상황실 지시 대사)\n` +
-        `- 📝 상황 묘사 | (유저 조치로 인해 바뀐 현장 상태 지문)\n` +
-        `- 🟢 점수 변동 | (칭찬 요약 및 획득 점수 기재. 예: 정당한 테이저 거치로 +10점)\n` +
-        `- 🔴 감점 내역 | (법령 위반, 과잉 진압, 보고 누락 시 감점 사유. 예: 미란다 원칙 누락으로 -10점. 없으면 생략)\n` +
-        `- 🎯 추천 선택지 | (다음 턴 유기적 전술 옵션 2~3개 제안)\n\n` +
-        `[엔딩 조건]\n` +
-        `${turnCount}턴 현재. 10턴 도달 시 누적 점수 기준 최종 성적표(특진 엔딩, 징계 엔딩, 도주 실패 엔딩 등)를 발행하고 마감하라.\n` +
-        `${lawContext}`;
+        `너는 대한민국 경찰관 초동조치 도상훈련(CPX) 시스템의 초엄격 평가관이다.\n` +
+        `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 현재 진행: ${turnCount}/20턴\n` +
+        `현장 위치: [${selectedJurisdiction} ${currentLocation}]\n\n` +
+        `[용의자 정보]\n` +
+        `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n` +
+        `체포 방식 지침: ${suspectInfo.arrestGuide}\n\n` +
+        `[현재 동료 상태]\n` +
+        `강태구 경사: 멘탈${kimMental}/신뢰${kimTrust} → ${kimFreeze ? "⚠️ 공포로 움직이지 못하는 상태. 이번 명령 거부." : kimIgnore ? "⚠️ 신뢰 부족으로 명령 무시 확률 높음." : "정상 대응 가능."}\n` +
+        (supportArrived ? `안정국 경장: 멘탈${leeMental}/신뢰${leeTrust} → ${leeFreeze ? "⚠️ 움직이지 못하는 상태." : leeIgnore ? "⚠️ 명령 무시 가능." : "정상 대응 가능."}\n` : `안정국 경장: 미출동 (추가 지원 요청 필요)\n`) +
+        `\n[현재 현장 수치]\n` +
+        `통제도: ${controlRate}% | 적법률: ${legalRate}% | 유저 체력: ${userHp}% | 유저 멘탈: ${userMental}%\n` +
+        `미보고 경과 턴: ${noReportTurns}턴\n\n` +
+        `[동료 행동 반영 지침]\n` +
+        `- 동료가 명령 무시/거부 상태이면 💬 현장 대사에서 해당 동료가 거부하는 대사를 반드시 포함하라.\n` +
+        `- 동료가 얼어있는 상태이면 현장 묘사에서 움직이지 못한다고 묘사하라.\n\n` +
+        `[상황 기반 무전/경고 생성 지침]\n` +
+        `- 미보고 ${noReportTurns}턴: 3턴 이상이면 상황실이 독촉하는 🚨 무전 교신을 상황에 맞게 창작 포함.\n` +
+        `- 통제도 ${controlRate}%: 50% 이하이면 서장이 경고하는 🚨 무전 지시를 상황에 맞게 창작 포함.\n` +
+        `- 적법률 ${legalRate}%: 60% 이하이면 시민 카메라 📢 상황 묘사 창작 포함.\n` +
+        `모든 무전/경고 멘트는 현 상황에 맞게 자유롭게 창작하라. 절대 고정 문구 금지.\n\n` +
+        `[유저 스탯 변화 지침]\n` +
+        `피의자 공격, 현장 부상 등 발생 시 🔶 대원 변동에 유저 체력 또는 멘탈 변화를 포함하라.\n` +
+        `예시: 유저 체력-10 / 유저 멘탈-5\n\n` +
+        `[점수 기준]\n` +
+        `적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 극히 인색하게 채점.\n\n` +
+        `[출력 포맷 - 반드시 준수]\n` +
+        `💬 현장 대사 | (피의자 또는 동료 대사. 동료 거부/무시 상태 반영)\n` +
+        `📝 상황 묘사 | (현장 상황 묘사)\n` +
+        `🟢 점수 변동 | (+N점 또는 변동 없음)\n` +
+        `🔴 감점 내역 | (있을 때만)\n` +
+        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N / 안정국 멘탈±N 신뢰±N / 유저 체력±N 멘탈±N. 변동 없으면 생략)\n` +
+        `🚨 무전 교신 | (조건 해당 시 상황 맞게 창작)\n` +
+        `📢 시민 상황 | (조건 해당 시)\n` +
+        `🎯 추천 선택지 |\n1. (옵션A)\n2. (옵션B)\n3. (옵션C)\n\n` +
+        `한자 절대 사용 금지. 100% 한글로만 출력.${lawContext}`;
 
-      const res = await fetch(GROQ_ENDPOINT, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
-          "Content-Type":  "application/json",
-        },
-        body: JSON.stringify({
-          model: GROQ_MODEL,
-          messages: [{ role: "system", content: systemPrompt }, ...chatHistory],
-        }),
-      });
+      let aiReply = await fetchGeminiResponse(text, systemPrompt);
 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData?.error?.message || `HTTP ${res.status}`);
-      }
+      if (supportArrivalMsg) aiReply = supportArrivalMsg + "\n\n" + aiReply;
 
-      const data    = await res.json();
-      const aiReply = data.choices[0].message.content;
-
-      chatHistory.push({ role: "assistant", content: aiReply });
-      loadingDiv.remove();
-      formatAndAppendMessage(aiReply, "ai");
-
-      // 정규식으로 AI 응답의 실제 ±숫자 파싱
+      // Parse score
       const gainMatch = aiReply.match(/🟢[^\n]*?\+(\d+)점/);
       const lossMatch = aiReply.match(/🔴[^\n]*?-(\d+)점/);
       if (gainMatch) score += parseInt(gainMatch[1], 10);
-      if (lossMatch) score  = Math.max(0, score - parseInt(lossMatch[1], 10));
+      if (lossMatch) score -= parseInt(lossMatch[1], 10);
+
+      // Parse control rate
+      const ctrlAbs = aiReply.match(/통제도\s*(\d+)%/);
+      const ctrlGain = aiReply.match(/통제도\+(\d+)/);
+      const ctrlLoss = aiReply.match(/통제도-(\d+)/);
+      if (ctrlAbs) controlRate = parseInt(ctrlAbs[1], 10);
+      else if (ctrlGain) controlRate = Math.min(100, controlRate + parseInt(ctrlGain[1], 10));
+      else if (ctrlLoss) controlRate = Math.max(0, controlRate - parseInt(ctrlLoss[1], 10));
+
+      // Parse legal rate
+      const legalAbs = aiReply.match(/적법률\s*(\d+)%/);
+      const legalGain = aiReply.match(/적법률\+(\d+)/);
+      const legalLoss = aiReply.match(/적법률-(\d+)/);
+      if (legalAbs) legalRate = parseInt(legalAbs[1], 10);
+      else if (legalGain) legalRate = Math.min(100, legalRate + parseInt(legalGain[1], 10));
+      else if (legalLoss) legalRate = Math.max(0, legalRate - parseInt(legalLoss[1], 10));
+
+      // Parse colleague stats
+      const kM = aiReply.match(/강태구\s*멘탈([-+]\d+)/); if (kM) kimMental = Math.max(10, Math.min(100, kimMental + parseInt(kM[1], 10)));
+      const kT = aiReply.match(/강태구\s*신뢰([-+]\d+)/); if (kT) kimTrust  = Math.max(0,  Math.min(100, kimTrust  + parseInt(kT[1], 10)));
+      const lM = aiReply.match(/안정국\s*멘탈([-+]\d+)/); if (lM) leeMental = Math.max(10, Math.min(100, leeMental + parseInt(lM[1], 10)));
+      const lT = aiReply.match(/안정국\s*신뢰([-+]\d+)/); if (lT) leeTrust  = Math.max(0,  Math.min(100, leeTrust  + parseInt(lT[1], 10)));
+
+      // Parse user stats
+      const uHp  = aiReply.match(/유저\s*체력([-+]\d+)/); if (uHp)  userHp     = Math.max(0, Math.min(100, userHp     + parseInt(uHp[1], 10)));
+      const uMen = aiReply.match(/유저\s*멘탈([-+]\d+)/); if (uMen) userMental = Math.max(0, Math.min(100, userMental + parseInt(uMen[1], 10)));
+
+      loadingDiv.remove();
+      formatAndAppendMessage(aiReply, "ai");
 
       scoreEl.textContent = score;
       turnCount++;
+      updateStatusBars();
+      updatePixelArt(turnCount);
+      stageEl.textContent = `${turnCount} / 20 턴`;
 
-      if (turnCount > 10) {
-        stageEl.textContent     = "훈련 종료 (FTX 마감)";
-        sendChatBtn.disabled    = true;
-        sendActionBtn.disabled  = true;
-        chatInputEl.disabled    = true;
-        actionInputEl.disabled  = true;
-        chatInputEl.placeholder = "모든 훈련 턴이 종료되었습니다. 최종 결과를 확인하십시오.";
-      } else {
-        stageEl.textContent = `${turnCount} / 10 턴`;
-      }
-
-      saveToSupabase(`${player.dept}_${player.name}`, score);
+      // Game over checks
+      if (userHp <= 0)   { triggerGameOver("대원 체력이 소진되어 현장에서 쓰러졌습니다. 긴급 후송 처리됩니다."); return; }
+      if (userMental <= 0) { triggerGameOver("극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다."); return; }
+      if (score <= -20)  { triggerGameOver("훈련 점수가 -20점 이하로 하락하여 훈련이 강제 종료되었습니다."); return; }
+      if (legalRate <= 30) { triggerGameOver("과잉 물리력 소지가 심각하게 식별되어 청문감사관실 직무집행 정지 명령이 하달되었습니다."); return; }
+      if (kimTrust <= 20 && (!supportArrived || leeTrust <= 20)) { triggerGameOver("동료 신뢰 완전 붕괴로 현장 공조가 거부되어 상황 통제에 실패했습니다."); return; }
 
     } catch (e) {
-      loadingDiv.textContent = `파이프라인 통신 지연: ${e.message}`;
+      loadingDiv.textContent = `통신 에러: ${e.message}`;
     } finally {
-      if (turnCount <= 10) {
-        sendChatBtn.disabled   = false;
+      if (stageEl.textContent !== "훈련 중단" && stageEl.textContent !== "훈련 완료") {
+        sendChatBtn.disabled = false;
         sendActionBtn.disabled = false;
       }
     }
   }
 
   function formatAndAppendMessage(rawText, classes) {
-    if (classes === "user") {
-      appendMessage(rawText, "user");
-      return;
-    }
-
     const div = document.createElement("div");
     div.className = `message ${classes}`;
+    let optionLines = [];
+    let insideOptions = false;
 
-    rawText.split("\n").forEach(function (line) {
+    rawText.split("\n").forEach(line => {
       if (!line.trim()) return;
-      const span = document.createElement("span");
-      if (line.startsWith("💬")) {
-        span.className = "story-dialogue";
-      } else if (line.startsWith("📝")) {
-        span.className = "story-desc";
-      } else if (line.startsWith("🟢")) {
-        span.className = "story-score";
-      } else if (line.startsWith("🔴")) {
-        span.className = "story-penalty";
-      } else if (line.startsWith("🎯")) {
-        span.className = "story-options";
-      } else {
-        const p = document.createElement("p");
-        p.textContent = line;
-        p.style.marginBottom = "6px";
-        div.appendChild(p);
+      if (line.startsWith("🎯") || insideOptions || /^[1-5]\./.test(line.trim())) {
+        insideOptions = true;
+        optionLines.push(line);
         return;
       }
-      span.textContent = line;
+      const span = document.createElement("span");
+      if (line.startsWith("💬")) {
+        const clean = line.replace("💬 현장 대사 |", "").trim();
+        if (!clean || clean === "없음") return;
+        span.className = "story-dialogue"; span.textContent = line;
+      } else if (line.startsWith("📝")) {
+        span.className = "story-desc"; span.textContent = line;
+      } else if (line.startsWith("🟢")) {
+        span.className = "story-score"; span.textContent = line;
+      } else if (line.startsWith("🔴")) {
+        span.className = "story-penalty"; span.textContent = line;
+      } else if (line.startsWith("🔶")) {
+        span.className = "story-stat-change"; span.textContent = line;
+      } else if (line.startsWith("🚨") || line.startsWith("📢")) {
+        span.className = "system-alert"; span.textContent = line;
+      } else {
+        const p = document.createElement("p");
+        p.textContent = line; p.style.marginBottom = "4px";
+        div.appendChild(p); return;
+      }
       div.appendChild(span);
     });
 
-    if (div.children.length === 0) div.textContent = rawText;
+    if (optionLines.length > 0) {
+      const container = document.createElement("div");
+      container.className = "interactive-options-container";
+      const title = document.createElement("span");
+      title.textContent = "🎯 추천 선택지 (클릭 시 자동 집행)";
+      title.style.fontSize = "12px"; title.style.color = "#9ca3af";
+      container.appendChild(title);
+      optionLines.forEach(line => {
+        const cleanLine = line.replace(/^[1-5]\.\s*/, "").trim();
+        if (!cleanLine || cleanLine.startsWith("🎯")) return;
+        const btn = document.createElement("button");
+        btn.className = "option-btn";
+        btn.textContent = line;
+        const isAction = line.includes("🛡️") || line.includes("삼단봉") || line.includes("테이저") || line.includes("권총") || line.includes("수갑");
+        btn.setAttribute("onclick", `selectOptionOption("${cleanLine.replace(/"/g,'&quot;')}", ${isAction})`);
+        container.appendChild(btn);
+      });
+      div.appendChild(container);
+    }
 
+    if (div.children.length === 0) div.textContent = rawText;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
 
   function appendMessage(text, classes) {
     const div = document.createElement("div");
-    div.className   = `message ${classes}`;
+    div.className = `message ${classes}`;
     div.textContent = text;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return div;
   }
-
-  async function saveToSupabase(stageInfo, currentScore) {
-    try {
-      await fetch(`${SUPABASE_URL}/rest/v1/user_status`, {
-        method: "POST",
-        headers: {
-          "apikey":        SUPABASE_KEY,
-          "Authorization": `Bearer ${SUPABASE_KEY}`,
-          "Content-Type":  "application/json",
-        },
-        body: JSON.stringify({ stage: stageInfo, score: currentScore }),
-      });
-    } catch (e) {}
-  }
-
 })();
 </script>
-
 </body>
 </html>

@@ -116,7 +116,7 @@
     .eval-summary-box { background: #111827; border-left: 3px solid #50e3c2; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-bottom: 22px; color: #d1d5db; line-height: 1.8; font-size: 13px; }
     .eval-table { width: 100%; border-collapse: collapse; margin-bottom: 22px; font-size: 13px; }
     .eval-table th { padding: 10px 14px; text-align: left; font-weight: bold; font-size: 12px; }
-    .eval-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); line-height: 1.7; vertical-align: top; }
+    .eval-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); line-height: 1.7; vertical-align: top; word-break: break-word; overflow-wrap: break-word; }
     .eval-table tr:last-child td { border-bottom: none; }
     .eval-th-good { background: rgba(16,185,129,0.12); color: #10b981; border-right: 1px solid var(--border); width: 50%; }
     .eval-th-bad  { background: rgba(249,115,22,0.12); color: #f97316; width: 50%; }
@@ -931,8 +931,8 @@
         curSec = 'comment'; comment = t.replace(/^💬[^|]*\|/, '').trim();
       } else {
         if (curSec === 'sum')  summary += t + ' ';
-        else if (curSec === 'good' && t.startsWith('-')) goodItems.push(t.slice(1).trim());
-        else if (curSec === 'bad'  && t.startsWith('-')) badItems.push(t.slice(1).trim());
+        else if (curSec === 'good') { const item = t.replace(/^[-•·\d]+[.)]\s*/, '').trim(); if (item) goodItems.push(item); }
+        else if (curSec === 'bad')  { const item = t.replace(/^[-•·\d]+[.)]\s*/, '').trim(); if (item) badItems.push(item); }
         else if (curSec === 'comment') comment += t;
       }
     });
@@ -1389,7 +1389,7 @@
         btn.className = "option-btn";
         btn.textContent = line;
         const isAction = line.includes("🛡️") || line.includes("삼단봉") || line.includes("테이저") || line.includes("권총") || line.includes("수갑");
-        btn.setAttribute("onclick", `selectOptionOption("${cleanLine.replace(/"/g,'&quot;')}", ${isAction})`);
+        (function(text, action) { btn.addEventListener('click', () => selectOptionOption(text, action)); })(cleanLine, isAction);
         container.appendChild(btn);
       });
       div.appendChild(container);

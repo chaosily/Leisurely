@@ -158,6 +158,15 @@
         </select>
       </div>
       <div class="form-group">
+        <label>⏱️ 훈련 턴 수</label>
+        <select id="max-turns">
+          <option value="5">5턴 (단기)</option>
+          <option value="10">10턴 (표준)</option>
+          <option value="15">15턴 (심화)</option>
+          <option value="20" selected>20턴 (완전)</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>🔑 Gemini API 키</label>
         <input type="text" id="gemini-key" placeholder="AQ.Ab8... 형식의 API 키 입력" autocomplete="off" />
       </div>
@@ -275,14 +284,15 @@
     "대전광역시 유성구": ["궁동 대학가 술집 거리", "노은동 상업지구", "관평동 주택가"],
   };
 
+  // attackMode: "physical"(체력감소), "verbal"(멘탈감소), "random"
   const SUSPECT_POOL = [
-    { type: "강자형", crimeType: "특수폭행", desc: "물리적 저항 극심, 흉기 소지", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
-    { type: "사이코형", crimeType: "특수협박", desc: "예측 불가 행동, 폭발물·흉기 위협", arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 언어적 설득이 역효과 날 수 있음. 선제 자극 금지.", lawKeyword: "위험" },
-    { type: "교활형", crimeType: "절도·사기", desc: "심리적 조종 시도, 도주 시도 가능성 높음", arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적. 대화로 시간 끌기 금지.", lawKeyword: "불심검문" },
-    { type: "성범죄자형", crimeType: "강간·성추행", desc: "현행범 도주 중, 피해자 보호 필요", arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 2차 피해 방지를 위한 증거 보존 지시.", lawKeyword: "경찰장구" },
-    { type: "음주폭력형", crimeType: "폭행·상해", desc: "만취 상태 폭행, 주변인 피해 발생", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압. 응급처치 대기.", lawKeyword: "경찰장구" },
-    { type: "교통도주형", crimeType: "교통사고 후 도주", desc: "사고 후 현장 이탈 시도, 피해자 방치", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포. 피해자 응급 조치 병행.", lawKeyword: "위험" },
-    { type: "가정폭력형", crimeType: "가정폭력·아동학대", desc: "가족 대상 반복 폭력, 피해자 격리 필요", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토. 증거사진 촬영 지시.", lawKeyword: "불심검문" },
+    { type: "강자형",     crimeType: "특수폭행",       desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
+    { type: "사이코형",   crimeType: "특수협박",       desc: "예측 불가 행동, 폭발물·흉기 위협",           attackMode: "both",     arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
+    { type: "교활형",     crimeType: "절도·사기",     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
+    { type: "성범죄자형", crimeType: "강간·성추행",   desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
+    { type: "음주폭력형", crimeType: "폭행·상해",     desc: "만취 상태 폭행, 주변인 피해 발생",           attackMode: "physical", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압.", lawKeyword: "경찰장구" },
+    { type: "교통도주형", crimeType: "교통사고 후 도주", desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
+    { type: "가정폭력형", crimeType: "가정폭력·아동학대", desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
   ];
 
   const KIM_TALK_POOL = {
@@ -304,11 +314,17 @@
   let controlRate = 65;
   let legalRate = 90;
   let turnCount = 1;
+  let maxTurns = 20;
   let isRadioMode = false;
+  let radioUsedThisTurn = false;
   let currentTotalSeconds = 0;
   let isArmorEquipped = false;
   let currentHoldingWeapon = "";
+  let isBatonActive = false;    // 삼단봉 토글
+  let isCuffsActive = false;    // 수갑 토글
   let suspectInfo = null;
+  let suspectRevealed = false;  // 용의자 특성 공개 여부
+  let suspectRevealTurn = 0;    // 공개될 턴 (2~5 랜덤)
   let lastReportTurn = 0;
   let currentLocation = "";
   let selectedJurisdiction = "";
@@ -318,8 +334,8 @@
   let userMental = 100;
 
   // Colleague stats (randomized 60-90 at login)
-  let kimMental = 0, kimTrust = 0;
-  let leeMental = 0, leeTrust = 0;
+  let kimMental = 0, kimTrust = 0, kimHp = 100;
+  let leeMental = 0, leeTrust = 0, leeHp = 100;
 
   // Support system
   let supportRequested = false;
@@ -413,18 +429,50 @@
     }
   });
 
+  // 모든 무기 칩 비활성화 (방검복 제외)
+  function clearAllWeapons() {
+    document.querySelectorAll(".inventory-slots .item-chip:not(#item-armor)").forEach(c => c.classList.remove("active"));
+    currentHoldingWeapon = "";
+    isBatonActive = false;
+    isCuffsActive = false;
+    weaponPrefixEl.style.display = "none";
+  }
+
   window.selectWeapon = function(element, itemName) {
     if (element.classList.contains("disabled")) return;
-    document.querySelectorAll(".inventory-slots .item-chip:not(#item-armor)").forEach(c => c.classList.remove("active"));
-    if (currentHoldingWeapon === itemName) {
-      currentHoldingWeapon = "";
-      weaponPrefixEl.style.display = "none";
-    } else {
+    // 삼단봉 토글
+    if (itemName === "확장형 삼단봉") {
+      clearAllWeapons();
+      isBatonActive = !false; // 방금 clear했으니 항상 ON
+      // 이전에 같은 무기면 OFF
+      if (currentHoldingWeapon === itemName) { isBatonActive = false; return; }
+      isBatonActive = true;
       currentHoldingWeapon = itemName;
       element.classList.add("active");
-      weaponPrefixEl.textContent = `${itemName} 파지 후`;
+      weaponPrefixEl.textContent = "확장형 삼단봉 파지 (공격력↑)";
       weaponPrefixEl.style.display = "block";
+      actionInputEl.focus();
+      return;
     }
+    // 수갑 토글
+    if (itemName === "경찰 수갑") {
+      clearAllWeapons();
+      if (currentHoldingWeapon === itemName) { isCuffsActive = false; return; }
+      isCuffsActive = true;
+      currentHoldingWeapon = itemName;
+      element.classList.add("active");
+      weaponPrefixEl.textContent = "수갑 파지 (체포 집행)";
+      weaponPrefixEl.style.display = "block";
+      actionInputEl.focus();
+      return;
+    }
+    // 권총/테이저: 1회용, 동시착용불가
+    clearAllWeapons();
+    if (currentHoldingWeapon === itemName) { return; } // already cleared
+    currentHoldingWeapon = itemName;
+    element.classList.add("active");
+    weaponPrefixEl.textContent = `${itemName} 파지 후`;
+    weaponPrefixEl.style.display = "block";
     actionInputEl.focus();
   };
 
@@ -434,9 +482,11 @@
     element.textContent = isArmorEquipped ? "간이 방검복 (착용 상태)" : "간이 방검복 (착용 가능)";
   };
 
-  function consumeCurrentWeapon() {
+  // 권총·테이저는 1회 사용 후 비활성화. 삼단봉·수갑은 토글이라 소모 안 함.
+  function consumeOneUseWeapon() {
     if (!currentHoldingWeapon) return;
-    const idMap = { "3.8구경 권총": "item-pistol", "테이저건": "item-taser", "확장형 삼단봉": "item-baton", "경찰 수갑": "item-cuffs" };
+    if (currentHoldingWeapon === "확장형 삼단봉" || currentHoldingWeapon === "경찰 수갑") return;
+    const idMap = { "3.8구경 권총": "item-pistol", "테이저건": "item-taser" };
     const id = idMap[currentHoldingWeapon];
     if (id) {
       const el = document.getElementById(id);
@@ -458,6 +508,7 @@
     if (!jurisdiction) { alert("근무 관할지를 선택해 주십시오."); return; }
     if (!apiKey) { alert("Gemini API 키를 입력해 주십시오."); return; }
     GEMINI_API_KEY = apiKey;
+    maxTurns = parseInt(document.getElementById("max-turns").value, 10);
 
     player = { name, rank };
     selectedJurisdiction = jurisdiction;
@@ -466,7 +517,9 @@
     currentLocation = locations[randInt(0, locations.length - 1)];
 
     suspectInfo = SUSPECT_POOL[randInt(0, SUSPECT_POOL.length - 1)];
-    suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]`;
+    suspectRevealed = false;
+    suspectRevealTurn = randInt(2, 5);
+    suspectTypeEl.textContent = `[??? - 용의자 정보 수집 중]`;
 
     kimMental = randInt(60, 90);
     kimTrust  = randInt(60, 90);
@@ -648,17 +701,82 @@
     else { chatInputEl.value = optionText; handleInputTransmission("chat"); }
   };
 
-  function triggerGameOver(reasonText) {
-    stageEl.textContent = "훈련 중단";
+  function disableGameInput(status) {
+    stageEl.textContent = status;
     sendChatBtn.disabled = true;
     sendActionBtn.disabled = true;
     chatInputEl.disabled = true;
     actionInputEl.disabled = true;
+  }
+
+  function triggerGameOver(reasonText) {
+    disableGameInput("훈련 중단");
     const div = document.createElement("div");
     div.className = "message ai";
     div.innerHTML = `<span class="system-alert">🚨 도상훈련 강제 종료 (GAME OVER)</span><br><p>${reasonText}</p><br><p style="color:#fbbf24;">최종 훈련 점수: <strong>${score}점</strong></p>`;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  async function triggerArrest() {
+    disableGameInput("피의자 체포");
+    const arrestPrompt =
+      `[절대 규칙] 반드시 아래 포맷으로만 응답하라.\n` +
+      `너는 대한민국 경찰관 초동조치 도상훈련 평가관이다.\n` +
+      `피훈련자 ${player.name} ${player.rank}이 수갑을 사용하여 용의자 체포를 시도했다.\n` +
+      `용의자 성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n` +
+      `현장 수치: 통제도 ${controlRate}% / 적법률 ${legalRate}% / 체력 ${userHp}% / 멘탈 ${userMental}%\n` +
+      `삼단봉 파지 여부: ${isBatonActive ? "예(제압 유리)" : "아니오"}\n\n` +
+      `체포 성공 여부를 적법률과 통제도, 삼단봉 파지 여부를 고려하여 판정하라.\n` +
+      `적법률 50% 이상, 통제도 40% 이상이면 체포 성공 가능.\n\n` +
+      `출력 포맷:\n` +
+      `💬 현장 대사 | (용의자 또는 동료 대사)\n` +
+      `📝 상황 묘사 | (체포 장면 묘사)\n` +
+      `🟢 점수 변동 | (+N점)\n` +
+      `한자 절대 사용 금지. 100% 한글.`;
+
+    const arrestReply = await fetchGeminiResponse("피의자 수갑 체포 집행", arrestPrompt);
+    formatAndAppendMessage(arrestReply, "ai");
+    await triggerFinalEvaluation("체포완료");
+  }
+
+  async function triggerFinalEvaluation(reason) {
+    disableGameInput("훈련 완료");
+    const reasonMap = {
+      "체포완료": "피의자 체포에 성공했습니다.",
+      "턴종료": `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
+      "체력소진": "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
+      "멘탈붕괴": "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다."
+    };
+    appendMessage(`[ 훈련 종료 사유: ${reasonMap[reason] || reason} | AI 종합 평가 생성 중... ]`, "ai");
+
+    const evalPrompt =
+      `[절대 규칙] 반드시 아래 포맷으로만 응답하라.\n` +
+      `너는 대한민국 경찰관 초동조치 도상훈련 최종 평가관이다.\n\n` +
+      `[훈련 결과 데이터]\n` +
+      `피훈련자: ${player.name} ${player.rank} | 관할지: ${selectedJurisdiction} ${currentLocation}\n` +
+      `종료 사유: ${reasonMap[reason] || reason}\n` +
+      `진행 턴: ${turnCount - 1}/${maxTurns}턴\n` +
+      `용의자 유형: ${suspectInfo.type} (${suspectInfo.crimeType})\n` +
+      `최종 훈련 점수: ${score}점\n` +
+      `현장 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
+      `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}%\n` +
+      `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
+      (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) + `\n` +
+      `위 데이터를 바탕으로 종합 평가를 작성하라.\n\n` +
+      `출력 포맷 (반드시 이 순서로):\n` +
+      `📝 훈련 총평 | (3~5줄 서술형 총평)\n` +
+      `🟢 잘한 점 | (구체적 항목 2~3개)\n` +
+      `🔴 미흡한 점 | (구체적 항목 2~3개)\n` +
+      `🏆 종합 평점 | NN점 / 100점 (소감 한 줄)\n\n` +
+      `평점 산정 기준: 훈련점수(30점) + 통제도(20점) + 적법률(20점) + 체력/멘탈(15점) + 동료관계(15점)을 가중 합산하여 100점 만점으로 환산.\n` +
+      `한자 절대 사용 금지. 100% 한글로만 출력.`;
+
+    const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt);
+    // Remove the loading message
+    const msgs = chatWindow.querySelectorAll(".message.ai");
+    if (msgs.length > 0) msgs[msgs.length - 1].remove();
+    formatAndAppendMessage(evalReply, "ai");
   }
 
   async function handleInputTransmission(inputType) {
@@ -670,14 +788,23 @@
     if (inputType === "chat") {
       text = chatInputEl.value.trim();
       if (!text) return;
-      if (text.includes("보고") || text.includes("상황실")) lastReportTurn = turnCount;
-      prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} 무전] ` : `🗣️ [${player.name} ${player.rank} 발언] `;
+      const isRadioReport = isRadioMode;
+      if (isRadioReport || text.includes("보고") || text.includes("상황실")) lastReportTurn = turnCount;
+      prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} 무전보고] ` : `🗣️ [${player.name} ${player.rank} 발언] `;
       chatInputEl.value = "";
+      // 무전은 1턴 후 자동 비활성화
+      if (isRadioMode) {
+        radioUsedThisTurn = true;
+        isRadioMode = false;
+        radioToggleBtn.classList.remove("active");
+        radioToggleBtn.textContent = "무전 OFF";
+        chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
+      }
     } else {
       text = actionInputEl.value.trim();
       if (!text) return;
       prefix = currentHoldingWeapon ? `🛡️ [${player.name} ${player.rank} 장구행사 - ${currentHoldingWeapon}] ` : `🛡️ [${player.name} ${player.rank} 전술조치] `;
-      if (currentHoldingWeapon) consumeCurrentWeapon();
+      if (currentHoldingWeapon) consumeOneUseWeapon();
       actionInputEl.value = "";
     }
 
@@ -714,20 +841,17 @@
       supportEtaCount.textContent = String(supportArrivalTurn - turnCount);
     }
 
-    if (turnCount >= 20) {
+    // 수갑 체포 감지 → 즉시 종료
+    const arrestAttempt = isCuffsActive && (text.includes("수갑") || text.includes("체포") || prefix.includes("수갑") || prefix.includes("체포"));
+    if (arrestAttempt) {
       loadingDiv.remove();
-      const finalMsg =
-        `📝 상황 묘사 | 20턴 종료. 도상훈련 전 과정을 완료했습니다.\n\n` +
-        `🏆 [도상훈련 최종 성적]\n` +
-        `- 훈련 대원: ${player.name} ${player.rank}\n` +
-        `- 관할지: ${selectedJurisdiction}\n` +
-        `- 현장: ${currentLocation}\n` +
-        `- 용의자 성향: ${suspectInfo.type}\n` +
-        `- 최종 점수: ${score}점\n` +
-        `- 현장 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
-        `- 체력: ${userHp}% | 멘탈: ${userMental}%`;
-      formatAndAppendMessage(finalMsg, "ai");
-      stageEl.textContent = "훈련 완료";
+      await triggerArrest();
+      return;
+    }
+
+    if (turnCount >= maxTurns) {
+      loadingDiv.remove();
+      await triggerFinalEvaluation("턴종료");
       return;
     }
 
@@ -739,47 +863,71 @@
       const leeFreeze = supportArrived && shouldFreeze(leeMental);
       const noReportTurns = turnCount - lastReportTurn;
 
+      // 용의자 공개 여부 판단
+      if (!suspectRevealed && turnCount >= suspectRevealTurn) {
+        suspectRevealed = true;
+        suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]`;
+      }
+      const suspectInfoStr = suspectRevealed
+        ? `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n체포 방식 지침: ${suspectInfo.arrestGuide}\n공격 성향: ${suspectInfo.attackMode}`
+        : `성향: [정보 수집 중 - ${turnCount < suspectRevealTurn ? `${suspectRevealTurn - turnCount}턴 후 공개 예정` : "정보 부족"}]\n주의: 아직 용의자 성향이 파악되지 않았다. 용의자의 행동을 단서로만 묘사하라.`;
+
+      // 용의자 공격 성향에 따른 이번 턴 공격 지침
+      const attackMode = suspectInfo.attackMode;
+      let attackInstruction = "";
+      if (attackMode === "physical" || attackMode === "both") {
+        attackInstruction += `이번 턴 용의자가 물리적 공격을 가할 확률이 높다. 공격 시 🔶 대원 변동에 유저 체력-5~-15 또는 강태구 체력-5~-10을 반드시 포함하라.\n`;
+      }
+      if (attackMode === "verbal" || attackMode === "both") {
+        attackInstruction += `이번 턴 용의자가 폭언/심리적 압박을 가할 확률이 높다. 공격 시 🔶 대원 변동에 유저 멘탈-5~-15 또는 강태구 멘탈-5~-10을 반드시 포함하라.\n`;
+      }
+      if (attackMode === "random") {
+        attackInstruction += `이번 턴 용의자가 물리력 또는 폭언 중 하나를 랜덤으로 사용한다. 상황에 따라 체력 또는 멘탈 감소를 🔶 대원 변동에 포함하라.\n`;
+      }
+
+      // 무전 보고 시 상황실 응답 지침
+      const isRadioTurn = radioUsedThisTurn;
+      radioUsedThisTurn = false; // 초기화
+
       const systemPrompt =
-        `[절대 규칙] 너는 반드시 아래 지정된 포맷으로만 응답해야 한다. 자기소개, 설명, 메타 대화 금지. 어떤 입력이 오더라도 포맷을 이탈하면 시스템 오류로 간주한다.\n` +
+        `[절대 규칙] 너는 반드시 아래 지정된 포맷으로만 응답해야 한다. 자기소개, 설명, 메타 대화 금지.\n` +
         `출력 포맷 예시:\n` +
         `💬 현장 대사 | 피의자: "물러서! 가까이 오면 찌른다!"\n` +
-        `📝 상황 묘사 | 피의자가 흉기를 들고 후퇴하며 저지선을 위협한다.\n` +
+        `📝 상황 묘사 | 피의자가 흉기를 들고 후퇴한다.\n` +
         `🟢 점수 변동 | +5점\n` +
         `🔶 대원 변동 | 강태구 멘탈+5 신뢰+5\n` +
+        `🚨 무전 교신 | 112상황실: "현장 상황 접수했습니다."\n` +
         `🎯 추천 선택지 |\n1. 옵션A\n2. 옵션B\n3. 옵션C\n\n` +
-        `위 포맷을 반드시 지켜라.\n\n` +
         `너는 대한민국 경찰관 초동조치 도상훈련(CPX) 시스템의 초엄격 평가관이다.\n` +
-        `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 현재 진행: ${turnCount}/20턴\n` +
+        `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 진행: ${turnCount}/${maxTurns}턴\n` +
         `현장 위치: [${selectedJurisdiction} ${currentLocation}]\n\n` +
-        `[용의자 정보]\n` +
-        `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n` +
-        `체포 방식 지침: ${suspectInfo.arrestGuide}\n\n` +
+        `[용의자 정보]\n${suspectInfoStr}\n\n` +
+        `[용의자 공격 지침]\n${attackInstruction}\n` +
         `[현재 동료 상태]\n` +
-        `강태구 경사: 멘탈${kimMental}/신뢰${kimTrust} → ${kimFreeze ? "⚠️ 공포로 움직이지 못하는 상태. 이번 명령 거부." : kimIgnore ? "⚠️ 신뢰 부족으로 명령 무시 확률 높음." : "정상 대응 가능."}\n` +
-        (supportArrived ? `안정국 경장: 멘탈${leeMental}/신뢰${leeTrust} → ${leeFreeze ? "⚠️ 움직이지 못하는 상태." : leeIgnore ? "⚠️ 명령 무시 가능." : "정상 대응 가능."}\n` : `안정국 경장: 미출동 (추가 지원 요청 필요)\n`) +
+        `강태구 경사: 멘탈${kimMental}/신뢰${kimTrust}/체력${kimHp} → ${kimFreeze ? "⚠️ 공포로 움직이지 못하는 상태. 이번 명령 거부." : kimIgnore ? "⚠️ 신뢰 부족으로 명령 무시 확률 높음." : "정상 대응 가능."}\n` +
+        (supportArrived ? `안정국 경장: 멘탈${leeMental}/신뢰${leeTrust}/체력${leeHp} → ${leeFreeze ? "⚠️ 움직이지 못하는 상태." : leeIgnore ? "⚠️ 명령 무시 가능." : "정상 대응 가능."}\n` : `안정국 경장: 미출동 (추가 지원 요청 필요)\n`) +
         `\n[현재 현장 수치]\n` +
         `통제도: ${controlRate}% | 적법률: ${legalRate}% | 유저 체력: ${userHp}% | 유저 멘탈: ${userMental}%\n` +
         `미보고 경과 턴: ${noReportTurns}턴\n\n` +
-        `[동료 행동 반영 지침]\n` +
-        `- 동료가 명령 무시/거부 상태이면 💬 현장 대사에서 해당 동료가 거부하는 대사를 반드시 포함하라.\n` +
-        `- 동료가 얼어있는 상태이면 현장 묘사에서 움직이지 못한다고 묘사하라.\n\n` +
-        `[상황 기반 무전/경고 생성 지침]\n` +
-        `- 미보고 ${noReportTurns}턴: 3턴 이상이면 상황실이 독촉하는 🚨 무전 교신을 상황에 맞게 창작 포함.\n` +
-        `- 통제도 ${controlRate}%: 50% 이하이면 서장이 경고하는 🚨 무전 지시를 상황에 맞게 창작 포함.\n` +
-        `- 적법률 ${legalRate}%: 60% 이하이면 시민 카메라 📢 상황 묘사 창작 포함.\n` +
-        `모든 무전/경고 멘트는 현 상황에 맞게 자유롭게 창작하라. 절대 고정 문구 금지.\n\n` +
-        `[유저 스탯 변화 지침]\n` +
-        `피의자 공격, 현장 부상 등 발생 시 🔶 대원 변동에 유저 체력 또는 멘탈 변화를 포함하라.\n` +
-        `예시: 유저 체력-10 / 유저 멘탈-5\n\n` +
-        `[점수 기준]\n` +
-        `적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 극히 인색하게 채점.\n\n` +
+        `[장구 현황]\n삼단봉 파지: ${isBatonActive ? "활성(공격력↑)" : "미파지"} | 수갑: ${isCuffsActive ? "파지 중" : "미파지"}\n\n` +
+        `[무전 보고 지침]\n` +
+        (isRadioTurn
+          ? `이번 턴 훈련자가 112상황실에 무전 보고했다. 🚨 무전 교신에서 "112상황실"이 상황에 맞는 구체적인 지시/응답을 반드시 1회 포함하라. 서장이나 기타 상급자는 2턴 이내 등장 금지.\n`
+          : `이번 턴 무전 보고 없음. 무보고 ${noReportTurns}턴 경과. 3턴 이상이면 상황실 독촉 🚨 무전 교신 포함.\n`) +
+        `\n[동료 행동 반영]\n` +
+        `동료가 명령 무시/거부 상태이면 💬에서 해당 동료 거부 대사 포함. 얼어있으면 📝에서 움직이지 못한다고 묘사.\n\n` +
+        `[기타 조건]\n` +
+        `- 통제도 ${controlRate}% ≤50이면 서장 경고 🚨 포함 (무전보고 턴 제외)\n` +
+        `- 적법률 ${legalRate}% ≤60이면 시민 카메라 📢 포함\n` +
+        `- 삼단봉 활성 시 물리적 제압 효과 크게 묘사\n\n` +
+        `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 극히 인색하게 채점.\n\n` +
         `[출력 포맷 - 반드시 준수]\n` +
-        `💬 현장 대사 | (피의자 또는 동료 대사. 동료 거부/무시 상태 반영)\n` +
-        `📝 상황 묘사 | (현장 상황 묘사)\n` +
+        `💬 현장 대사 | (용의자/동료 대사)\n` +
+        `📝 상황 묘사 | (현장 상황)\n` +
         `🟢 점수 변동 | (+N점 또는 변동 없음)\n` +
         `🔴 감점 내역 | (있을 때만)\n` +
-        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N / 안정국 멘탈±N 신뢰±N / 유저 체력±N 멘탈±N. 변동 없으면 생략)\n` +
-        `🚨 무전 교신 | (조건 해당 시 상황 맞게 창작)\n` +
+        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N 체력±N / 안정국 멘탈±N 신뢰±N 체력±N / 유저 체력±N 멘탈±N. 변동없으면 생략)\n` +
+        `🚨 무전 교신 | (조건 해당 시)\n` +
         `📢 시민 상황 | (조건 해당 시)\n` +
         `🎯 추천 선택지 |\n1. (옵션A)\n2. (옵션B)\n3. (옵션C)\n\n` +
         `한자 절대 사용 금지. 100% 한글로만 출력.${lawContext}`;
@@ -813,8 +961,10 @@
       // Parse colleague stats
       const kM = aiReply.match(/강태구\s*멘탈([-+]\d+)/); if (kM) kimMental = Math.max(10, Math.min(100, kimMental + parseInt(kM[1], 10)));
       const kT = aiReply.match(/강태구\s*신뢰([-+]\d+)/); if (kT) kimTrust  = Math.max(0,  Math.min(100, kimTrust  + parseInt(kT[1], 10)));
+      const kH = aiReply.match(/강태구\s*체력([-+]\d+)/); if (kH) kimHp     = Math.max(0,  Math.min(100, kimHp     + parseInt(kH[1], 10)));
       const lM = aiReply.match(/안정국\s*멘탈([-+]\d+)/); if (lM) leeMental = Math.max(10, Math.min(100, leeMental + parseInt(lM[1], 10)));
       const lT = aiReply.match(/안정국\s*신뢰([-+]\d+)/); if (lT) leeTrust  = Math.max(0,  Math.min(100, leeTrust  + parseInt(lT[1], 10)));
+      const lH = aiReply.match(/안정국\s*체력([-+]\d+)/); if (lH) leeHp     = Math.max(0,  Math.min(100, leeHp     + parseInt(lH[1], 10)));
 
       // Parse user stats
       const uHp  = aiReply.match(/유저\s*체력([-+]\d+)/); if (uHp)  userHp     = Math.max(0, Math.min(100, userHp     + parseInt(uHp[1], 10)));
@@ -827,14 +977,15 @@
       turnCount++;
       updateStatusBars();
       updatePixelArt(turnCount);
-      stageEl.textContent = `${turnCount} / 20 턴`;
+      stageEl.textContent = `${turnCount} / ${maxTurns} 턴`;
 
       // Game over checks
-      if (userHp <= 0)   { triggerGameOver("대원 체력이 소진되어 현장에서 쓰러졌습니다. 긴급 후송 처리됩니다."); return; }
-      if (userMental <= 0) { triggerGameOver("극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다."); return; }
+      if (userHp <= 0)   { await triggerFinalEvaluation("체력소진"); return; }
+      if (userMental <= 0) { await triggerFinalEvaluation("멘탈붕괴"); return; }
       if (score <= -20)  { triggerGameOver("훈련 점수가 -20점 이하로 하락하여 훈련이 강제 종료되었습니다."); return; }
       if (legalRate <= 30) { triggerGameOver("과잉 물리력 소지가 심각하게 식별되어 청문감사관실 직무집행 정지 명령이 하달되었습니다."); return; }
       if (kimTrust <= 20 && (!supportArrived || leeTrust <= 20)) { triggerGameOver("동료 신뢰 완전 붕괴로 현장 공조가 거부되어 상황 통제에 실패했습니다."); return; }
+      if (turnCount > maxTurns) { await triggerFinalEvaluation("턴종료"); return; }
 
     } catch (e) {
       loadingDiv.textContent = `통신 에러: ${e.message}`;

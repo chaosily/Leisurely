@@ -82,11 +82,12 @@
 
     .colleague-panel { background: var(--status-bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
 
-    #pixel-art-zone { width: 100%; height: 80px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+    #pixel-art-zone { width: 100%; height: 100px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
     @media (min-width: 600px) { #pixel-art-zone { height: 160px; } }
     .live-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); border: 1px solid #ef4444; color: #ef4444; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 4px; }
-    #img-loader { color: #4b5563; font-size: 13px; font-weight: bold; }
-    #pixel-art-img { width: 100%; height: 100%; object-fit: contain; display: none; }
+    #cctv-canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; animation: cctvFlicker 4s infinite; }
+    @keyframes cctvFlicker { 0%,100% { opacity: 1; } 97% { opacity: 1; } 98% { opacity: 0.85; } 99% { opacity: 0.95; } }
+    #cctv-timestamp { position: absolute; bottom: 6px; right: 10px; font-family: 'Courier New', monospace; font-size: 10px; color: #4ade80; text-shadow: 0 0 4px rgba(74,222,128,0.6); letter-spacing: 0.5px; pointer-events: none; }
 
     #chat-window { height: calc(100dvh - 300px); min-height: 340px; border: 1px solid var(--border); padding: 10px; overflow-y: auto; background: var(--chat-bg); border-radius: 6px; margin-bottom: 8px; scroll-behavior: smooth; }
     @media (min-width: 600px) { #chat-window { height: 480px; padding: 15px; } }
@@ -331,8 +332,8 @@
 
     <div id="pixel-art-zone">
       <div class="live-badge">📡 112 상황실 CCTV 현장 연동</div>
-      <span id="img-loader">[ 현장 영상 로딩 대기 중... ]</span>
-      <img id="pixel-art-img" src="" alt="현장 이미지" />
+      <canvas id="cctv-canvas" width="96" height="54"></canvas>
+      <span id="cctv-timestamp"></span>
     </div>
 
     <div id="chat-window"></div>
@@ -485,8 +486,6 @@
   const barControl     = document.getElementById("bar-control");
   const txtLegal       = document.getElementById("txt-legal");
   const barLegal       = document.getElementById("bar-legal");
-  const imgLoader      = document.getElementById("img-loader");
-  const pixelArtImg    = document.getElementById("pixel-art-img");
   const officerLeeRow  = document.getElementById("officer-lee-row");
   const supportEtaLine = document.getElementById("support-eta-line");
   const supportEtaCount= document.getElementById("support-eta-count");
@@ -856,6 +855,7 @@
         `예: 홍대 길거리 흉기난동, 고속도로 음주 역주행, 도심 스토킹 피의자 추격, 지하철 성범죄 현행범, 아파트 층간소음 폭행, 편의점 강도 등 최근 이슈 사건 유형.\n` +
         `신고 경위(신고자 대사 또는 112 신고 내용)를 먼저 간략히 제시하고, 현장 도착 직후 상황을 사실적으로 묘사하라.\n` +
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이 빈 줄로 가독성을 확보하라.\n` +
+        `피훈련자는 반드시 1인칭 "나"로 지칭하라. 유저가 직접 주인공이 된 시점으로 묘사하라. 3인칭 이름 표기 금지.\n` +
         `법령 검토는 상황 구성에 활용하되, 조문 번호나 법령명을 본문에 직접 표기하지 마라.\n` +
         `선택지 3개는 현 상황에서 취할 수 있는 현실적 경찰 조치여야 한다.\n` +
         `한자 절대 사용 금지. 100% 한글로만 출력.${lawCtx}`;
@@ -874,10 +874,147 @@
     lastReportTurn = 1;
   }
 
+  // ── CCTV 도트 씬 렌더러 (Canvas 절차 생성, 네트워크·토큰 0) ──────────
+  function hashStr(str) {
+    let h = 1779033703;
+    for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+    return h >>> 0;
+  }
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function getScenePalette() {
+    const loc = currentLocation || "";
+    if (/클럽|먹자|번화가|유흥|로데오|카페|술집/.test(loc))
+      return { sky: "#0a0a1e", bld: ["#1a1a2e", "#16213e", "#1f1f3a"], win: ["#ff2d95", "#00e5ff", "#ffe066", "#b366ff"], ground: "#1c1c24", road: "#2a2a33" };
+    if (/주택|아파트|한옥|주거|봉제/.test(loc))
+      return { sky: "#0d1117", bld: ["#2d2318", "#3a2d1e", "#241c12"], win: ["#ffd08a", "#ffb347"], ground: "#22201c", road: "#2e2b26" };
+    if (/시장|상가|거리|역세권|금융/.test(loc))
+      return { sky: "#0b0f14", bld: ["#20262e", "#2a3038", "#1a2026"], win: ["#ffe066", "#9adcff", "#ffb347"], ground: "#20242a", road: "#2c3138" };
+    if (/공원|해수욕장|해안|의림지|해변/.test(loc))
+      return { sky: "#081018", bld: ["#12281a", "#1a3324", "#0e2014"], win: ["#88c9a1"], ground: "#18231c", road: "#242e26", trees: true };
+    return { sky: "#0c0c14", bld: ["#1e1e28", "#26262f", "#18181f"], win: ["#ffe066", "#9adcff"], ground: "#1e1e24", road: "#2a2a30" };
+  }
+
+  function drawPerson(ctx, x, y, opts) {
+    // opts: { body, cap, lying, weapon }  기준 y = 바닥선, 스프라이트 4x11
+    if (opts.lying) {
+      ctx.fillStyle = opts.body;
+      ctx.fillRect(x - 4, y - 3, 9, 3);
+      ctx.fillStyle = "#f0c8a0";
+      ctx.fillRect(x + 5, y - 3, 3, 3);
+      return;
+    }
+    // 야간 가시성: 어두운 외곽선
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(x - 1, y - 12, 6, 12);
+    ctx.fillStyle = "#f0c8a0";                    // 머리
+    ctx.fillRect(x, y - 10, 4, 3);
+    if (opts.cap) { ctx.fillStyle = opts.cap; ctx.fillRect(x - 1, y - 11, 6, 2); }
+    ctx.fillStyle = opts.body;                    // 몸통
+    ctx.fillRect(x, y - 7, 4, 5);
+    ctx.fillStyle = "#101018";                    // 다리
+    ctx.fillRect(x, y - 2, 1, 2);
+    ctx.fillRect(x + 3, y - 2, 1, 2);
+    if (opts.weapon) { ctx.fillStyle = opts.weapon; ctx.fillRect(x + 4, y - 6, 2, 2); }
+  }
+
   function updatePixelArt(stageNum) {
-    imgLoader.style.display = "none";
-    pixelArtImg.style.display = "block";
-    pixelArtImg.src = `https://picsum.photos/seed/police_${selectedJurisdiction.replace(/ /g,'_')}_${stageNum}/800/160`;
+    const cv = document.getElementById("cctv-canvas");
+    if (!cv) return;
+    const ctx = cv.getContext("2d");
+    const W = cv.width, H = cv.height;
+    const rng = mulberry32(hashStr(`${selectedJurisdiction}_${currentLocation}`));
+    const pal = getScenePalette();
+    const gy = Math.floor(H * 0.85);              // 바닥선
+
+    // 하늘
+    ctx.fillStyle = pal.sky;
+    ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 12; i++) {                // 별/불빛
+      if (rng() < 0.6) { ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(Math.floor(rng() * W), Math.floor(rng() * H * 0.3), 1, 1); }
+    }
+
+    // 건물 실루엣 + 창문
+    let bx = 0;
+    while (bx < W) {
+      const bw = 8 + Math.floor(rng() * 12);
+      const bh = Math.floor(H * (0.25 + rng() * 0.4));
+      ctx.fillStyle = pal.bld[Math.floor(rng() * pal.bld.length)];
+      ctx.fillRect(bx, gy - bh, bw, bh);
+      for (let wy = gy - bh + 2; wy < gy - 3; wy += 4) {
+        for (let wx = bx + 1; wx < bx + bw - 1; wx += 3) {
+          if (rng() < 0.22) { ctx.fillStyle = pal.win[Math.floor(rng() * pal.win.length)]; ctx.globalAlpha = 0.65; ctx.fillRect(wx, wy, 1, 2); ctx.globalAlpha = 1; }
+        }
+      }
+      bx += bw + 1 + Math.floor(rng() * 3);
+    }
+    if (pal.trees) {                              // 공원: 나무
+      for (let i = 0; i < 5; i++) {
+        const tx = Math.floor(rng() * W);
+        ctx.fillStyle = "#2f4f35"; ctx.fillRect(tx - 2, gy - 9, 5, 5);
+        ctx.fillStyle = "#3d2b1f"; ctx.fillRect(tx, gy - 4, 1, 4);
+      }
+    }
+
+    // 바닥/도로
+    ctx.fillStyle = pal.ground; ctx.fillRect(0, gy, W, H - gy);
+    ctx.fillStyle = pal.road;   ctx.fillRect(0, gy, W, 2);
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    for (let dx = 2; dx < W; dx += 8) ctx.fillRect(dx, gy + Math.floor((H - gy) / 2), 4, 1);
+
+    // 가로등 + 광원
+    const lampX = Math.floor(W * 0.5);
+    ctx.fillStyle = "#3a3a44"; ctx.fillRect(lampX, gy - 16, 1, 16);
+    ctx.fillStyle = "#ffe9a8"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
+    const grad = ctx.createRadialGradient(lampX, gy - 16, 1, lampX, gy - 16, 14);
+    grad.addColorStop(0, "rgba(255,233,168,0.25)"); grad.addColorStop(1, "rgba(255,233,168,0)");
+    ctx.fillStyle = grad; ctx.fillRect(lampX - 14, gy - 17, 28, 20);
+
+    // ── 인물 배치 (게임 상태 연동) ──
+    const dead = userHp <= 0;
+    drawPerson(ctx, 10, gy, { body: "#3b82f6", cap: "#1e3a8a", lying: dead });           // 유저
+    drawPerson(ctx, 18, gy, { body: "#3b82f6", cap: "#1e3a8a" });                        // 강태구
+    if (supportArrived) drawPerson(ctx, 26, gy, { body: "#60a5fa", cap: "#1e3a8a" });    // 안정국
+
+    // 용의자: 통제도 낮을수록 경찰 쪽으로 접근
+    const sx = Math.floor(W * 0.78 - (100 - controlRate) * 0.28);
+    const suspectBody = suspectRevealed
+      ? ({ "깡패형": "#ef4444", "사이코형": "#c084fc", "교활형": "#f59e0b", "성범죄자형": "#fb923c", "음주폭력형": "#f87171", "교통도주형": "#9ca3af", "가정폭력형": "#dc2626" }[suspectInfo?.type] || "#ef4444")
+      : "#b45050";
+    const weaponColor = suspectInfo && suspectRevealed
+      ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[suspectInfo.armedWith])
+      : null;
+    drawPerson(ctx, sx, gy, { body: suspectBody, weapon: weaponColor });
+
+    // 피해자
+    if (hasVictim) drawPerson(ctx, Math.min(W - 7, sx + 10), gy, { body: "#facc15", lying: victimSafety <= 40 });
+
+    // ── CCTV 오버레이 ──
+    for (let y = 0; y < H; y += 3) { ctx.fillStyle = "rgba(0,0,0,0.14)"; ctx.fillRect(0, y, W, 1); }   // 스캔라인
+    const noiseRng = mulberry32(hashStr(`noise_${stageNum}_${Date.now() % 100000}`));
+    for (let i = 0; i < 90; i++) {                                                                       // 노이즈
+      ctx.fillStyle = noiseRng() < 0.5 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.18)";
+      ctx.fillRect(Math.floor(noiseRng() * W), Math.floor(noiseRng() * H), 1, 1);
+    }
+    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.75);                 // 비네트
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.45)");
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ff3b30"; ctx.fillRect(2, 2, 2, 2);                                                 // REC 도트
+
+    // 타임스탬프
+    const ts = document.getElementById("cctv-timestamp");
+    if (ts) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      ts.textContent = `CAM-03 ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} T${stageNum}`;
+    }
   }
 
   function formatElapsedTime() {
@@ -1128,7 +1265,7 @@
         `피훈련자: ${player.name} ${player.rank} | 동행: 강태구 경사 | 현장: ${selectedJurisdiction} ${currentLocation}\n` +
         `범죄 유형: ${suspectInfo.crimeType} | 용의자: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `[중요] 최근 대한민국 뉴스에서 보도된 실제 사건을 재구성한 형식으로 상황을 작성하라.\n` +
-        `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 조문 번호나 법령명은 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;
+        `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 피훈련자는 1인칭 "나"로 지칭하라(3인칭 이름 표기 금지). 조문 번호나 법령명은 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;
       const startMsg = await fetchGeminiResponse(`${player.name} ${player.rank} 현장 도착.`, initPrompt);
       loadingDiv.remove();
       formatAndAppendMessage(startMsg, "ai");
@@ -1163,7 +1300,7 @@
       `적법률 50% 이상, 통제도 40% 이상이면 체포 성공 가능.\n\n` +
       `출력 포맷:\n` +
       `💬 현장 대사 | (용의자 또는 동료 대사)\n` +
-      `📝 상황 묘사 | (체포 장면 묘사)\n` +
+      `📝 상황 묘사 | (체포 장면 묘사. 피훈련자는 1인칭 "나"로 지칭)\n` +
       `🟢 점수 변동 | (+N점)\n` +
       `한자 절대 사용 금지. 100% 한글.`;
 
@@ -1685,6 +1822,7 @@
         `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 극히 인색하게 채점.\n\n` +
         `[문체 지침]\n` +
         `- 상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이에 빈 줄을 넣어 가독성을 확보하라.\n` +
+        `- 피훈련자(${player.name} ${player.rank})는 반드시 1인칭 "나"로 지칭하라. "나는 삼단봉을 고쳐 쥐었다"처럼 유저가 직접 주인공이 된 시점으로 묘사하라. "${player.name} ${player.rank}은(는)" 같은 3인칭 표기 금지.\n` +
         `- 법령 검토 결과는 상황 판단에 활용하되, 조문 번호나 법령명을 본문에 직접 표기하지 마라.\n\n` +
         `[출력 포맷 - 반드시 준수]\n` +
         `💬 현장 대사 | (용의자/동료 대사)\n` +

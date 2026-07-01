@@ -47,6 +47,10 @@
     .collapsible-body { padding: 10px 14px 12px; border-top: 1px solid var(--border); }
     .collapsible-panel.collapsed .collapsible-body { display: none; }
     .collapsible-panel.collapsed .collapsible-arrow { transform: rotate(-90deg); }
+    .hdr-bar-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-weight: normal; }
+    .hdr-bar-label { font-size: 11px; color: #9ca3af; flex-shrink: 0; width: 52px; }
+    .hdr-bar-row .gauge-bg { background: #374151; height: 8px; border-radius: 4px; flex: 1; overflow: hidden; }
+    .hdr-bar-num { font-size: 12px; font-weight: bold; width: 28px; text-align: right; flex-shrink: 0; }
 
     .status-dashboard { font-size: 13px; line-height: 1.6; }
     .status-top-row { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; gap: 6px; font-size: 13px; }
@@ -240,26 +244,23 @@
     <!-- ① 상황 정보 패널 (접이식) -->
     <div class="collapsible-panel" id="panel-status">
       <div class="collapsible-header" onclick="togglePanel('panel-status')">
-        <span>🎖️ 유저: <span id="player-info" style="color:#60a5fa;"></span> &nbsp;|&nbsp; ⏳ <span id="current-stage">1 / 20 턴</span> &nbsp;|&nbsp; 💯 <span id="current-score" style="color:var(--accent-score);">0</span>점<br>
-        <span style="font-weight:normal;font-size:12px;">❤️ <span id="hp-mini" style="color:#ef4444;font-weight:bold;">100</span> · 🧠 <span id="mt-mini" style="color:#a855f7;font-weight:bold;">100</span> · 🚨 <span id="ctrl-mini" style="color:#10b981;font-weight:bold;">65</span> · ⚖️ <span id="legal-mini" style="color:#60a5fa;font-weight:bold;">90</span></span></span>
+        <span style="flex:1;">🎖️ 유저: <span id="player-info" style="color:#60a5fa;"></span> &nbsp;|&nbsp; ⏳ <span id="current-stage">1 / 20 턴</span> &nbsp;|&nbsp; 💯 <span id="current-score" style="color:var(--accent-score);">0</span>점
+        <div class="hdr-bar-row">
+          <span class="hdr-bar-label">❤️ 체력</span>
+          <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
+          <span id="txt-user-hp" class="hdr-bar-num">100</span>
+        </div>
+        <div class="hdr-bar-row">
+          <span class="hdr-bar-label">🧠 멘탈</span>
+          <div class="gauge-bg"><div id="bar-user-mental" class="gauge-fill user-mental normal" style="width:100%;"></div></div>
+          <span id="txt-user-mental" class="hdr-bar-num">100</span>
+        </div></span>
         <span class="collapsible-arrow">▼</span>
       </div>
       <div class="collapsible-body status-dashboard">
         <!-- 사망 배너 -->
         <div id="death-banner" style="display:none;background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#ef4444;font-weight:bold;text-align:center;padding:8px;border-radius:6px;margin-bottom:8px;">
           💀 대원 사망 — 임무 수행 불가 상태
-        </div>
-
-        <!-- 체력/멘탈 → 유저 항목 바로 아래 -->
-        <div class="stat-grid" style="margin-bottom:8px;">
-          <div class="gauge-wrapper">
-            <span style="white-space:nowrap;">❤️ 체력: <span id="txt-user-hp">100%</span></span>
-            <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
-          </div>
-          <div class="gauge-wrapper">
-            <span style="white-space:nowrap;">🧠 멘탈: <span id="txt-user-mental">100%</span></span>
-            <div class="gauge-bg"><div id="bar-user-mental" class="gauge-fill user-mental normal" style="width:100%;"></div></div>
-          </div>
         </div>
 
         <div class="dispatch-info">
@@ -934,11 +935,33 @@
     const pal = getScenePalette();
     const gy = Math.floor(H * 0.85);              // 바닥선
 
-    // 하늘
-    ctx.fillStyle = pal.sky;
-    ctx.fillRect(0, 0, W, H);
-    for (let i = 0; i < 12; i++) {                // 별/불빛
-      if (rng() < 0.6) { ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(Math.floor(rng() * W), Math.floor(rng() * H * 0.3), 1, 1); }
+    // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외)
+    const hour = new Date().getHours();
+    const phase = (hour >= 6 && hour < 16) ? "day" : (hour >= 16 && hour < 19) ? "dusk" : "night";
+
+    // 하늘 (시간대별)
+    if (phase === "day") {
+      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      sky.addColorStop(0, "#5b9bd5"); sky.addColorStop(1, "#a8cbe8");
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      // 구름
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      for (let i = 0; i < 3; i++) { const cx = Math.floor(rng() * W), cy = 3 + Math.floor(rng() * 8); ctx.fillRect(cx, cy, 7, 2); ctx.fillRect(cx + 2, cy - 1, 4, 1); }
+      // 해
+      ctx.fillStyle = "#fff3b0"; ctx.fillRect(W - 14, 4, 4, 4);
+    } else if (phase === "dusk") {
+      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      sky.addColorStop(0, "#3b2a55"); sky.addColorStop(0.55, "#b3552e"); sky.addColorStop(1, "#e8955a");
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      // 노을 해
+      ctx.fillStyle = "#ffb14a"; ctx.fillRect(W - 18, Math.floor(gy * 0.55), 5, 5);
+    } else {
+      ctx.fillStyle = pal.sky; ctx.fillRect(0, 0, W, H);
+      for (let i = 0; i < 12; i++) {              // 별
+        if (rng() < 0.6) { ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(Math.floor(rng() * W), Math.floor(rng() * H * 0.3), 1, 1); }
+      }
+      // 달
+      ctx.fillStyle = "#e8e8d0"; ctx.fillRect(W - 12, 4, 3, 3);
     }
 
     // 건물 실루엣 + 창문
@@ -950,7 +973,8 @@
       ctx.fillRect(bx, gy - bh, bw, bh);
       for (let wy = gy - bh + 2; wy < gy - 3; wy += 4) {
         for (let wx = bx + 1; wx < bx + bw - 1; wx += 3) {
-          if (rng() < 0.22) { ctx.fillStyle = pal.win[Math.floor(rng() * pal.win.length)]; ctx.globalAlpha = 0.65; ctx.fillRect(wx, wy, 1, 2); ctx.globalAlpha = 1; }
+          const winProb = phase === "day" ? 0.05 : 0.22;
+          if (rng() < winProb) { ctx.fillStyle = pal.win[Math.floor(rng() * pal.win.length)]; ctx.globalAlpha = 0.65; ctx.fillRect(wx, wy, 1, 2); ctx.globalAlpha = 1; }
         }
       }
       bx += bw + 1 + Math.floor(rng() * 3);
@@ -969,13 +993,17 @@
     ctx.fillStyle = "rgba(255,255,255,0.18)";
     for (let dx = 2; dx < W; dx += 8) ctx.fillRect(dx, gy + Math.floor((H - gy) / 2), 4, 1);
 
-    // 가로등 + 광원
+    // 가로등 + 광원 (밤·노을만 점등)
     const lampX = Math.floor(W * 0.5);
     ctx.fillStyle = "#3a3a44"; ctx.fillRect(lampX, gy - 16, 1, 16);
-    ctx.fillStyle = "#ffe9a8"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
-    const grad = ctx.createRadialGradient(lampX, gy - 16, 1, lampX, gy - 16, 14);
-    grad.addColorStop(0, "rgba(255,233,168,0.25)"); grad.addColorStop(1, "rgba(255,233,168,0)");
-    ctx.fillStyle = grad; ctx.fillRect(lampX - 14, gy - 17, 28, 20);
+    if (phase !== "day") {
+      ctx.fillStyle = "#ffe9a8"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
+      const grad = ctx.createRadialGradient(lampX, gy - 16, 1, lampX, gy - 16, 14);
+      grad.addColorStop(0, "rgba(255,233,168,0.25)"); grad.addColorStop(1, "rgba(255,233,168,0)");
+      ctx.fillStyle = grad; ctx.fillRect(lampX - 14, gy - 17, 28, 20);
+    } else {
+      ctx.fillStyle = "#55555f"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
+    }
 
     // ── 인물 배치 (게임 상태 연동) ──
     const dead = userHp <= 0;
@@ -995,6 +1023,9 @@
 
     // 피해자
     if (hasVictim) drawPerson(ctx, Math.min(W - 7, sx + 10), gy, { body: "#facc15", lying: victimSafety <= 40 });
+
+    // 낮 밝기 보정
+    if (phase === "day") { ctx.fillStyle = "rgba(200,220,255,0.10)"; ctx.fillRect(0, 0, W, H); }
 
     // ── CCTV 오버레이 ──
     for (let y = 0; y < H; y += 3) { ctx.fillStyle = "rgba(0,0,0,0.14)"; ctx.fillRect(0, y, W, 1); }   // 스캔라인
@@ -1074,22 +1105,20 @@
     barLegal.style.width = `${legalRate}%`;
     barLegal.className = legalRate <= 50 ? "gauge-fill warning" : "gauge-fill normal";
 
-    document.getElementById("txt-user-hp").textContent = `${userHp}%`;
+    document.getElementById("txt-user-hp").textContent = `${userHp}`;
     const barHp = document.getElementById("bar-user-hp");
     barHp.style.width = `${userHp}%`;
     barHp.className = userHp <= 30 ? "gauge-fill user-hp warning" : "gauge-fill user-hp normal";
+    document.getElementById("txt-user-hp").style.color = userHp <= 30 ? "#ef4444" : "#f9fafb";
 
-    document.getElementById("txt-user-mental").textContent = `${userMental}%`;
+    document.getElementById("txt-user-mental").textContent = `${userMental}`;
     const barMental = document.getElementById("bar-user-mental");
     barMental.style.width = `${userMental}%`;
     barMental.className = userMental <= 30 ? "gauge-fill user-mental warning" : "gauge-fill user-mental normal";
+    document.getElementById("txt-user-mental").style.color = userMental <= 30 ? "#c084fc" : "#f9fafb";
 
     updateOfficerUI("kim", kimMental, kimTrust, KIM_TALK_POOL);
     if (supportArrived) updateOfficerUI("lee", leeMental, leeTrust, LEE_TALK_POOL);
-
-    // 패널 헤더 미니 표시 (접힘 상태에서도 확인 가능)
-    const mini = { "hp-mini": userHp, "mt-mini": userMental, "ctrl-mini": controlRate, "legal-mini": legalRate };
-    Object.entries(mini).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.textContent = v; });
 
     // 저항도 / 피해자 안전 게이지
     const txtResist = document.getElementById("txt-resist");
@@ -1109,8 +1138,8 @@
     const deathBanner = document.getElementById("death-banner");
     if (userHp <= 0) {
       if (deathBanner) deathBanner.style.display = "block";
-      const hpMini = document.getElementById("hp-mini");
-      if (hpMini) hpMini.textContent = "0 💀";
+      const hpNum = document.getElementById("txt-user-hp");
+      if (hpNum) { hpNum.textContent = "💀"; hpNum.style.color = "#ef4444"; }
       if (!playerInfoEl.dataset.dead) {
         playerInfoEl.dataset.dead = "1";
         playerInfoEl.innerHTML = `${esc(playerInfoEl.textContent)} <span style="color:#ef4444;">💀 사망</span>`;
@@ -1762,7 +1791,7 @@
       const attackMode = suspectInfo.attackMode;
       let attackInstruction = "";
       if (attackMode === "physical" || attackMode === "both") {
-        attackInstruction += `이번 턴 용의자가 물리적 공격을 가할 확률이 높다. 공격 시 🔶 대원 변동에 유저 체력-5~-15 또는 강태구 체력-5~-10을 반드시 포함하라.\n`;
+        attackInstruction += `이번 턴 용의자가 물리적 공격을 가할 확률이 높다. 단, 유저 피격 데미지는 시스템이 별도 계산하므로 🔶 대원 변동에 유저 체력 변동을 절대 출력하지 마라. 동료(강태구/안정국) 체력 변동만 출력 가능.\n`;
       }
       if (attackMode === "verbal" || attackMode === "both") {
         attackInstruction += `이번 턴 용의자가 폭언/심리적 압박을 가할 확률이 높다. 공격 시 🔶 대원 변동에 유저 멘탈-5~-15 또는 강태구 멘탈-5~-10을 반드시 포함하라.\n`;
@@ -1789,6 +1818,10 @@
         `🚨 무전 교신 | 112상황실: "현장 상황 접수했습니다."\n` +
         `🎯 추천 선택지 |\n1. 옵션A\n2. 옵션B\n3. 옵션C\n\n` +
         `너는 대한민국 경찰관 초동조치 도상훈련(CPX) 시스템의 초엄격 평가관이다.\n` +
+        `[유저 입력 처리 원칙 - 최우선]\n` +
+        `- 유저가 입력한 대화/무전은 유저 본인이 현장에서 실제로 발화한 말이다. 유저의 대사를 새로 창작하거나 대신 말하지 마라.\n` +
+        `- 💬 현장 대사에는 상대방(용의자·동료·상황실·시민)이 유저의 발언을 듣고 보이는 반응 대사만 출력하라.\n` +
+        `- 📝 상황 묘사에는 유저 발언이 현장에 미친 효과와 상대의 행동 변화를 서술하라.\n` +
         `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 진행: ${turnCount}/${maxTurns}턴\n` +
         `현장 위치: [${selectedJurisdiction} ${currentLocation}]\n\n` +
         `[용의자 정보]\n${suspectInfoStr}\n\n` +
@@ -1829,7 +1862,7 @@
         `📝 상황 묘사 | (현장 상황. 한두 문장마다 줄바꿈)\n` +
         `🟢 점수 변동 | (+N점 또는 변동 없음)\n` +
         `🔴 감점 내역 | (있을 때만)\n` +
-        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N 체력±N / 안정국 멘탈±N 신뢰±N 체력±N / 유저 체력±N 멘탈±N. 통제도·적법률 출력 금지. 변동없으면 생략)\n` +
+        `🔶 대원 변동 | (강태구 멘탈±N 신뢰±N 체력±N / 안정국 멘탈±N 신뢰±N 체력±N / 유저 멘탈±N. 유저 체력 출력 절대 금지(시스템 전담). 통제도·적법률 출력 금지. 변동없으면 생략)\n` +
         `🚨 무전 교신 | (조건 해당 시)\n` +
         `📢 시민 상황 | (조건 해당 시)\n` +
         `🎯 추천 선택지 |\n1. (옵션A)\n2. (옵션B)\n3. (옵션C)\n\n` +
@@ -1856,8 +1889,7 @@
       const lT = aiReply.match(/안정국\s*신뢰([-+]\d+)/); if (lT) leeTrust  = Math.max(0,  Math.min(100, leeTrust  + parseInt(lT[1], 10)));
       const lH = aiReply.match(/안정국\s*체력([-+]\d+)/); if (lH) leeHp     = Math.max(0,  Math.min(100, leeHp     + parseInt(lH[1], 10)));
 
-      // Parse user stats
-      const uHp  = aiReply.match(/유저\s*체력([-+]\d+)/); if (uHp)  userHp     = Math.max(0, Math.min(100, userHp     + parseInt(uHp[1], 10)));
+      // Parse user stats (체력은 클라이언트 전담 — AI 파싱은 멘탈만)
       const uMen = aiReply.match(/유저\s*멘탈([-+]\d+)/); if (uMen) userMental = Math.max(0, Math.min(100, userMental + parseInt(uMen[1], 10)));
 
       loadingDiv.remove();

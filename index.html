@@ -141,12 +141,14 @@
     .option-btn:hover:not(:disabled) { background: #2d3748; box-shadow: 0 0 6px rgba(251,191,36,0.3); }
     .option-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #374151; }
 
-    .dual-input-panel { display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
-    .input-row { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
-    .input-label { width: auto; font-size: 15px; font-weight: bold; color: #9ca3af; text-align: center; flex-shrink: 0; }
-    @media (min-width: 600px) { .dual-input-panel { gap: 12px; padding: 14px; } }
-    .input-label .label-text { display: none; }
-    @media (min-width: 600px) { .input-label .label-text { display: inline; font-size: 12px; } }
+    .dual-input-panel { display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
+    .input-row { display: flex; gap: 6px; align-items: stretch; flex-wrap: nowrap; }
+    .input-desc-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 24px; }
+    .input-desc-label { font-size: 12px; font-weight: bold; color: #9ca3af; flex-shrink: 0; }
+    .input-hint { font-size: 11px; color: #6b7280; }
+    .dual-input-panel textarea { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; line-height: 1.5; resize: none; min-height: 52px; }
+    .dual-input-panel textarea:focus { outline: 2px solid var(--primary); }
+    @media (min-width: 600px) { .dual-input-panel { gap: 8px; padding: 14px; } }
     .weapon-prefix-badge { background: #374151; color: #9ca3af; padding: 6px 10px; font-size: 12px; border-radius: 4px; border: 1px solid var(--border); display: none; white-space: nowrap; }
     .radio-toggle-btn { padding: 10px 14px; background: #374151; border: 1px solid var(--border); color: #9ca3af; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 6px; white-space: nowrap; transition: all 0.2s; flex-shrink: 0; }
     .radio-toggle-btn.active { background: #065f46; border-color: var(--accent-dialogue); color: #fff; box-shadow: 0 0 8px rgba(80,227,194,0.4); }
@@ -206,6 +208,14 @@
           <option value="10">10턴 (표준)</option>
           <option value="15">15턴 (심화)</option>
           <option value="20" selected>20턴 (완전)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>🎚️ 난이도</label>
+        <select id="difficulty">
+          <option value="초급">초급 (공격 빈도↓, 즉사 위험↓)</option>
+          <option value="중급" selected>중급 (표준)</option>
+          <option value="상급">상급 (공격 빈도↑, 즉사 위험↑, 지원 지연)</option>
         </select>
       </div>
       <div class="form-group">
@@ -308,17 +318,27 @@
     <div id="chat-window"></div>
 
     <div class="dual-input-panel">
-      <div class="input-row">
-        <div class="input-label">🗣️<span class="label-text"> 대화/무전</span></div>
-        <button id="radio-toggle" class="radio-toggle-btn">무전 OFF</button>
-        <input type="text" id="chat-input" placeholder="동료 무전 또는 피의자 설득 대사 입력..." />
-        <button id="send-chat-btn" class="btn-action-trigger">전송</button>
+      <!-- 1행: 현장조치 설명 + 장구 상태 -->
+      <div class="input-desc-row">
+        <span class="input-desc-label">🛡️ 현장조치</span>
+        <span id="weapon-prefix" class="weapon-prefix-badge"></span>
+        <span id="action-hint" class="input-hint">장구 미파지 — 전술 조치를 입력하세요</span>
       </div>
+      <!-- 2행: 조치 입력 (2줄) -->
       <div class="input-row">
-        <div class="input-label">🛡️<span class="label-text"> 현장조치</span></div>
-        <div id="weapon-prefix" class="weapon-prefix-badge"></div>
-        <input type="text" id="action-input" placeholder="전술 제압 명령 또는 방어선 구축 전술 입력..." />
+        <textarea id="action-input" rows="2" placeholder="전술 제압 명령 또는 방어선 구축 전술 입력... (Enter 전송)"></textarea>
         <button id="send-action-btn" class="btn-action-trigger btn-action-primary">집행</button>
+      </div>
+      <!-- 3행: 대화/무전 설명 + 무전 토글 -->
+      <div class="input-desc-row">
+        <span class="input-desc-label">🗣️ 대화/무전</span>
+        <button id="radio-toggle" class="radio-toggle-btn">무전 OFF</button>
+        <span id="chat-hint" class="input-hint">동료 대화 또는 용의자 설득</span>
+      </div>
+      <!-- 4행: 대화 입력 (2줄) -->
+      <div class="input-row">
+        <textarea id="chat-input" rows="2" placeholder="동료 무전 또는 피의자 설득 대사 입력... (Enter 전송)"></textarea>
+        <button id="send-chat-btn" class="btn-action-trigger">전송</button>
       </div>
     </div>
   </div>
@@ -392,6 +412,14 @@
   let pendingOptionClick = false;
   let isBatonActive = false;    // 삼단봉 토글
   let isCuffsActive = false;    // 수갑 토글
+  let pistolAmmo = 3;           // 권총: 공포탄 1 + 실탄 2
+  let taserCount = 2;           // 테이저건 2회
+  let warningGiven = false;     // 경고 절차 이행 여부 (실탄 전 경고 원칙)
+  let lastShotWasBlank = false; // 이번 턴 권총 발사가 공포탄인지
+  let pistolTension = false;    // 권총 파지에 용의자 격앙 (공격 확률↑)
+  let turnLog = [];             // 턴별 조치 기록
+  let difficulty = "중급";
+  const DIFF_FACTOR = { "초급": { atk: 0.75, fatal: 0.5 }, "중급": { atk: 1.0, fatal: 1.0 }, "상급": { atk: 1.2, fatal: 1.5 } };
   let suspectInfo = null;
   let suspectRevealed = false;  // 용의자 특성 공개 여부
   let suspectRevealTurn = 0;    // 공개될 턴 (2~5 랜덤)
@@ -490,8 +518,8 @@
   loginBtn.addEventListener("click", handleLogin);
   sendChatBtn.addEventListener("click", () => handleInputTransmission("chat"));
   sendActionBtn.addEventListener("click", () => handleInputTransmission("action"));
-  chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleInputTransmission("chat"); });
-  actionInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") handleInputTransmission("action"); });
+  chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInputTransmission("chat"); } });
+  actionInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInputTransmission("action"); } });
 
   radioToggleBtn.addEventListener("click", () => {
     isRadioMode = !isRadioMode;
@@ -504,7 +532,48 @@
       radioToggleBtn.textContent = "무전 OFF";
       chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
     }
+    updateInputHints();
   });
+
+  // 시스템 노트 (채팅창 회색 안내)
+  function appendSystemNote(text) {
+    const nd = document.createElement("div");
+    nd.className = "message ai";
+    nd.style.cssText = "font-size:11px;color:#9ca3af;border-left:2px solid #4b5563;padding:3px 8px;margin:2px 0;";
+    nd.textContent = text;
+    chatWindow.appendChild(nd);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  // 무기 칩 라벨 갱신 (잔량/파지 상태 표기)
+  function updateWeaponChips() {
+    const blankLeft = pistolAmmo >= 3 ? 1 : 0;
+    const liveLeft = Math.max(0, pistolAmmo - blankLeft);
+    const pistolEl = document.getElementById("item-pistol");
+    const taserEl = document.getElementById("item-taser");
+    const batonEl = document.getElementById("item-baton");
+    const cuffsEl = document.getElementById("item-cuffs");
+    if (pistolEl) pistolEl.textContent = pistolAmmo > 0 ? `3.8구경 권총 (공포탄 ${blankLeft}/실탄 ${liveLeft})` : `3.8구경 권총 (탄약 소진)`;
+    if (taserEl) taserEl.textContent = taserCount > 0 ? `테이저건 (${taserCount}회)` : `테이저건 (소진)`;
+    if (batonEl) batonEl.textContent = isBatonActive ? `확장형 삼단봉 ✅ 파지 중` : `확장형 삼단봉`;
+    if (cuffsEl) cuffsEl.textContent = isCuffsActive ? `경찰 수갑 ✅ 파지 중` : `경찰 수갑`;
+  }
+
+  // 입력란 힌트 갱신
+  function updateInputHints() {
+    const actionHint = document.getElementById("action-hint");
+    if (actionHint) {
+      actionHint.textContent = currentHoldingWeapon
+        ? `${currentHoldingWeapon} 파지 중 — 제압·체포 조치를 입력하세요`
+        : "장구 미파지 — 전술 조치를 입력하세요";
+      actionHint.style.color = currentHoldingWeapon ? "#60a5fa" : "#6b7280";
+    }
+    const chatHint = document.getElementById("chat-hint");
+    if (chatHint) {
+      chatHint.textContent = isRadioMode ? "📡 무전 ON — 112상황실 육하원칙 보고" : "동료 대화 또는 용의자 설득";
+      chatHint.style.color = isRadioMode ? "#50e3c2" : "#6b7280";
+    }
+  }
 
   // 모든 무기 칩 비활성화 (방검복 제외)
   function clearAllWeapons() {
@@ -512,67 +581,83 @@
     currentHoldingWeapon = "";
     isBatonActive = false;
     isCuffsActive = false;
+    pistolTension = false;
     weaponPrefixEl.style.display = "none";
   }
 
   window.selectWeapon = function(element, itemName) {
     if (element.classList.contains("disabled")) return;
-    // 삼단봉 토글
-    if (itemName === "확장형 삼단봉") {
-      clearAllWeapons();
-      isBatonActive = !false; // 방금 clear했으니 항상 ON
-      // 이전에 같은 무기면 OFF
-      if (currentHoldingWeapon === itemName) { isBatonActive = false; return; }
-      isBatonActive = true;
-      currentHoldingWeapon = itemName;
-      element.classList.add("active");
-      weaponPrefixEl.textContent = "확장형 삼단봉 파지 (공격력↑)";
-      weaponPrefixEl.style.display = "block";
-      actionInputEl.focus();
-      return;
-    }
-    // 수갑 토글
-    if (itemName === "경찰 수갑") {
-      clearAllWeapons();
-      if (currentHoldingWeapon === itemName) { isCuffsActive = false; return; }
-      isCuffsActive = true;
-      currentHoldingWeapon = itemName;
-      element.classList.add("active");
-      weaponPrefixEl.textContent = "수갑 파지 (체포 집행)";
-      weaponPrefixEl.style.display = "block";
-      actionInputEl.focus();
-      return;
-    }
-    // 권총/테이저: 1회용, 동시착용불가
+    const wasActive = currentHoldingWeapon === itemName;
     clearAllWeapons();
-    if (currentHoldingWeapon === itemName) { return; } // already cleared
+    updateWeaponChips();
+    updateInputHints();
+    if (wasActive) {
+      appendSystemNote(`⬜ ${itemName} 파지 해제`);
+      return; // 토글 OFF
+    }
     currentHoldingWeapon = itemName;
+    if (itemName === "확장형 삼단봉") isBatonActive = true;
+    if (itemName === "경찰 수갑") isCuffsActive = true;
     element.classList.add("active");
-    weaponPrefixEl.textContent = `${itemName} 파지 후`;
-    weaponPrefixEl.style.display = "block";
+    const badgeMap = {
+      "확장형 삼단봉": "확장형 삼단봉 파지 (공격력↑)",
+      "경찰 수갑": "수갑 파지 (체포 집행)",
+      "3.8구경 권총": `권총 파지 (다음 발: ${pistolAmmo >= 3 ? "공포탄" : "실탄"})`,
+      "테이저건": `테이저건 파지 (${taserCount}회 남음)`
+    };
+    weaponPrefixEl.textContent = badgeMap[itemName] || `${itemName} 파지`;
+    weaponPrefixEl.style.display = "inline-block";
+
+    // 권총 파지 반응: 용의자 성향에 따라 위축 또는 격앙
+    if (itemName === "3.8구경 권총") {
+      if (suspectRevealed && (suspectInfo.type === "사이코형" || suspectInfo.type === "깡패형")) {
+        pistolTension = true;
+        appendSystemNote("⚠️ 권총 파지에 용의자가 격앙됩니다! 이번 턴 공격 위험 증가");
+      } else {
+        controlRate = Math.min(100, controlRate + 3);
+        updateStatusBars();
+        appendSystemNote("🔫 권총 파지 — 용의자 위축, 통제도 +3");
+      }
+    }
+    updateWeaponChips();
+    updateInputHints();
     actionInputEl.focus();
   };
 
   window.toggleArmor = function(element) {
     isArmorEquipped = !isArmorEquipped;
     element.classList.toggle("active", isArmorEquipped);
-    element.textContent = isArmorEquipped ? "간이 방검복 (착용 상태)" : "간이 방검복 (착용 가능)";
+    element.textContent = isArmorEquipped ? "간이 방검복 ✅ 착용 중" : "간이 방검복 (착용 가능)";
   };
 
-  // 권총·테이저는 1회 사용 후 비활성화. 삼단봉·수갑은 토글이라 소모 안 함.
+  // 권총·테이저는 사용 시 잔량 차감. 삼단봉·수갑은 토글이라 소모 안 함.
   function consumeOneUseWeapon() {
     if (!currentHoldingWeapon) return;
     if (currentHoldingWeapon === "확장형 삼단봉" || currentHoldingWeapon === "경찰 수갑") return;
-    const idMap = { "3.8구경 권총": "item-pistol", "테이저건": "item-taser" };
-    const id = idMap[currentHoldingWeapon];
-    if (id) {
-      const el = document.getElementById(id);
-      el.classList.remove("active");
-      el.classList.add("disabled");
-      el.onclick = null;
+    if (currentHoldingWeapon === "3.8구경 권총") {
+      pistolAmmo = Math.max(0, pistolAmmo - 1);
+      if (pistolAmmo === 0) {
+        const el = document.getElementById("item-pistol");
+        el.classList.remove("active"); el.classList.add("disabled");
+        appendSystemNote("🔫 탄약 전량 소진 — 권총 사용 불가");
+      } else {
+        document.getElementById("item-pistol").classList.remove("active");
+      }
+    } else if (currentHoldingWeapon === "테이저건") {
+      taserCount = Math.max(0, taserCount - 1);
+      if (taserCount === 0) {
+        const el = document.getElementById("item-taser");
+        el.classList.remove("active"); el.classList.add("disabled");
+        appendSystemNote("⚡ 카트리지 전량 소진 — 테이저건 사용 불가");
+      } else {
+        document.getElementById("item-taser").classList.remove("active");
+      }
     }
     currentHoldingWeapon = "";
+    pistolTension = false;
     weaponPrefixEl.style.display = "none";
+    updateWeaponChips();
+    updateInputHints();
   }
 
   async function handleLogin() {
@@ -586,6 +671,7 @@
     if (!apiKey) { alert("Gemini API 키를 입력해 주십시오."); return; }
     GEMINI_API_KEY = apiKey;
     maxTurns = parseInt(document.getElementById("max-turns").value, 10);
+    difficulty = document.getElementById("difficulty").value || "중급";
 
     player = { name, rank };
     selectedJurisdiction = jurisdiction;
@@ -627,6 +713,8 @@
 
     updateStatusBars();
     updatePixelArt(1);
+    updateWeaponChips();
+    updateInputHints();
 
     const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 생성 중 ]", "ai");
 
@@ -816,6 +904,8 @@
     score = 0; controlRate = 65; legalRate = 90; turnCount = 1;
     isRadioMode = false; radioUsedThisTurn = false; currentTotalSeconds = 0;
     isArmorEquipped = false; currentHoldingWeapon = ""; isBatonActive = false; isCuffsActive = false;
+    pistolAmmo = 3; taserCount = 2; warningGiven = false; pistolTension = false; lastShotWasBlank = false;
+    turnLog = [];
     userHp = 100; userMental = 100;
     kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;
     leeMental = 0; leeTrust = 0; leeHp = 100;
@@ -833,14 +923,16 @@
     chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
     weaponPrefixEl.style.display = "none";
     document.querySelectorAll(".inventory-slots .item-chip").forEach(c => {
-      c.classList.remove("active"); c.onclick = null;
+      c.classList.remove("active", "disabled"); c.onclick = null;
     });
     // Re-bind inventory chips
     [["item-pistol","3.8구경 권총"],["item-taser","테이저건"],["item-baton","확장형 삼단봉"],["item-cuffs","경찰 수갑"]].forEach(([id, name]) => {
       const el = document.getElementById(id); if (el) el.setAttribute("onclick", `selectWeapon(this,'${name}')`);
     });
     const armorEl = document.getElementById("item-armor");
-    if (armorEl) armorEl.setAttribute("onclick", "toggleArmor(this)");
+    if (armorEl) { armorEl.setAttribute("onclick", "toggleArmor(this)"); armorEl.textContent = "간이 방검복 (착용 가능)"; }
+    updateWeaponChips();
+    updateInputHints();
 
     document.getElementById("eval-zone").style.display = "none";
     simZone.style.display = "block";
@@ -1089,6 +1181,10 @@
         <tbody>${tableRows}</tbody>
       </table>
 
+      ${turnLog.length > 0 ? `
+      <div class="eval-section-title">📜 턴별 조치 기록</div>
+      <div class="eval-summary-box" style="max-height:220px;overflow-y:auto;font-size:12px;">${turnLog.map(l => esc(l)).join('<br>')}</div>` : ''}
+
       <div class="eval-restart-row">
         <p style="color:#6b7280;font-size:12px;margin-bottom:10px;">훈련 세션이 종료되었습니다.</p>
         <button class="option-btn" onclick="document.getElementById('eval-zone').style.display='none';document.getElementById('simulator-zone').style.display='block';" style="background:#374151;margin:4px;">← 뒤로가기 (훈련 내용 확인)</button>
@@ -1110,10 +1206,19 @@
 
     if (inputType === "action") {
       if (weaponUsed === "3.8구경 권총") {
-        legalDelta -= 15;
-        if (controlRate > 65) { legalDelta -= 5; notes.push("⚖️ 권총 과잉사용: 적법률↓↓"); }
-        if (Math.random() < 0.65) { ctrlDelta += 12; notes.push("🔫 권총 위협 성공: 통제도↑"); }
-        else                      { ctrlDelta -= 10; notes.push("🔫 권총 위협 실패: 통제도↓"); }
+        if (lastShotWasBlank) {
+          // 공포탄: 위협 사격 (적법률 부담 낮음)
+          legalDelta -= 5;
+          if (Math.random() < 0.55) { ctrlDelta += 10; notes.push("🔫 공포탄 경고사격 효과: 통제도↑"); }
+          else                      { ctrlDelta -= 6;  notes.push("🔫 공포탄에도 용의자 반응 없음: 통제도↓"); }
+        } else {
+          // 실탄
+          legalDelta -= 15;
+          if (!warningGiven) { legalDelta -= 8; notes.push("⚖️ 경고 절차 미준수 실탄 사용: 적법률↓↓ (경직법 제10조의4 위반 소지)"); }
+          if (controlRate > 65) { legalDelta -= 5; notes.push("⚖️ 권총 과잉사용: 적법률↓↓"); }
+          if (Math.random() < 0.70) { ctrlDelta += 15; notes.push("🔫 실탄 제압 성공: 통제도↑↑"); }
+          else                      { ctrlDelta -= 10; notes.push("🔫 실탄 제압 실패: 통제도↓"); }
+        }
       } else if (weaponUsed === "테이저건") {
         legalDelta -= 8;
         if (suspectRevealed && suspectInfo.attackMode === "verbal") { legalDelta -= 3; notes.push("⚖️ 테이저 부적절: 언어적 위협에 물리력 행사"); }
@@ -1132,6 +1237,16 @@
       if (isRadioTurn) {
         ctrlDelta += 3; legalDelta += 5;
         if (preNoReport <= 2) { score += 5; scoreEl.textContent = score; notes.push("📡 조기 보고: 훈련점수 +5"); }
+      } else if (/(강태구|안정국)/.test(text) && /(테이저|삼단봉|권총|제압|검거|체포|진압)/.test(text)) {
+        // 동료에게 장구/제압 지시
+        const targetLee = /안정국/.test(text) && supportArrived;
+        const trust = targetLee ? leeTrust : kimTrust;
+        const who = targetLee ? "안정국 경장" : "강태구 경사";
+        if (trust > 60) { ctrlDelta += 8; legalDelta += 2; notes.push(`👮 ${who}이(가) 지시에 따라 제압 지원: 통제도↑`); }
+        else if (trust > 40) {
+          if (Math.random() < 0.5) { ctrlDelta += 8; notes.push(`👮 ${who}이(가) 망설이다 지시 수행: 통제도↑`); }
+          else { ctrlDelta -= 2; notes.push(`👮 ${who}이(가) 머뭇거립니다 (신뢰 부족)`); }
+        } else { ctrlDelta -= 4; notes.push(`👮 ${who}이(가) 지시를 거부합니다! (신뢰 붕괴)`); }
       } else if (/경고|정지|멈춰|손들어|내려놔|엎드려/.test(text)) {
         ctrlDelta += 4; legalDelta += 5;
       } else {
@@ -1147,8 +1262,10 @@
     if (preNoReport > 3) legalDelta -= 3;
 
     // 용의자 공격 (확률적 통제도 영향 + 흉기 피격 데미지)
+    const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
     const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
-    if (Math.random() < Math.min(0.85, baseProb + (100 - controlRate) / 200)) {
+    const tensionBonus = pistolTension ? 0.15 : 0;
+    if (Math.random() < Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus) * df.atk)) {
       const m = suspectInfo.attackMode;
       let physicalHit = false;
       if      (m === "physical") { ctrlDelta -= randInt(8, 15); physicalHit = true; }
@@ -1165,10 +1282,10 @@
         let dmg = 0, fatal = false, icon = "👊";
         if (w === "gun") {
           icon = "🔫";
-          if (Math.random() < 0.5) fatal = true; else dmg = randInt(50, 80);
+          if (Math.random() < Math.min(0.9, 0.5 * df.fatal)) fatal = true; else dmg = randInt(50, 80);
         } else if (w === "blade") {
           icon = "🗡️";
-          if (Math.random() < 0.2) fatal = true; else dmg = randInt(30, 60);
+          if (Math.random() < Math.min(0.9, 0.2 * df.fatal)) fatal = true; else dmg = randInt(30, 60);
         } else if (w === "blunt") {
           icon = "🔨"; dmg = randInt(20, 50);
         } else {
@@ -1182,13 +1299,16 @@
         if (fatal) {
           userHp = 0;
           notes.push(`${icon} 치명적 피격! 대원이 쓰러졌습니다 (즉사)`);
+          if (navigator.vibrate) { try { navigator.vibrate([100, 50, 100, 50, 400]); } catch (e) {} }
         } else if (dmg > 0) {
           userHp = Math.max(0, userHp - dmg);
           notes.push(`${icon} 용의자 공격 피격: 체력 -${dmg}`);
+          if (navigator.vibrate) { try { navigator.vibrate(180); } catch (e) {} }
         }
       }
     }
 
+    pistolTension = false; // 파지 격앙 효과는 1턴만
     controlRate = Math.max(0, Math.min(100, controlRate + ctrlDelta));
     legalRate   = Math.max(0, Math.min(100, legalRate   + legalDelta));
 
@@ -1224,6 +1344,7 @@
         radioToggleBtn.classList.remove("active");
         radioToggleBtn.textContent = "무전 OFF";
         chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
+        updateInputHints();
       }
     } else {
       text = actionInputEl.value.trim();
@@ -1232,9 +1353,17 @@
       prefix = currentHoldingWeapon ? `🛡️ [${player.name} ${player.rank} 장구행사 - ${currentHoldingWeapon}] ` : `🛡️ [${player.name} ${player.rank} 전술조치] `;
       actionInputEl.value = "";
     }
-    // consumeOneUseWeapon 전에 무기명 기록 (applyRoundChanges에 전달)
+    // consumeOneUseWeapon 전에 무기명·발사유형 기록 (applyRoundChanges에 전달)
     const weaponUsedThisAction = inputType === "action" ? (currentHoldingWeapon || "") : "";
+    const shotWasBlank = weaponUsedThisAction === "3.8구경 권총" && pistolAmmo >= 3;
+    lastShotWasBlank = shotWasBlank;
     if (inputType === "action" && currentHoldingWeapon) consumeOneUseWeapon();
+
+    // 경고 절차 이행 감지 (실탄 사용 전 경고 원칙)
+    if (/경고|정지|멈춰|손들어|내려놔|투항/.test(text) || shotWasBlank) warningGiven = true;
+
+    // 턴 로그 기록
+    turnLog.push(`${turnCount}턴 | ${prefix}${text}`);
 
     // Check support request
     const supportKeywords = ["추가 지원", "지원 요청", "응원 요청", "백업 요청", "지원을 요청"];
@@ -1411,6 +1540,8 @@
       if (stageEl.textContent !== "훈련 중단" && stageEl.textContent !== "훈련 완료") {
         sendChatBtn.disabled = false;
         sendActionBtn.disabled = false;
+        // 전송 후 포커스 유지 (모바일 연속 입력 편의)
+        (inputType === "chat" ? chatInputEl : actionInputEl).focus();
       }
     }
   }

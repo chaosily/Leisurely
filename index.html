@@ -25,9 +25,10 @@
       --accent-stat-change: #ff781f;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
-    .container { max-width: 850px; margin: 0 auto; background: var(--card); padding: 24px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
-    h2 { color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.25rem; text-align: center; }
+    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); padding: 8px; }
+    .container { max-width: 850px; margin: 0 auto; background: var(--card); padding: 12px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+    h2 { color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-bottom: 12px; font-size: 1.1rem; text-align: center; }
+    @media (min-width: 600px) { body { padding: 20px; } .container { padding: 24px; } h2 { font-size: 1.25rem; } }
     .login-box { display: flex; flex-direction: column; gap: 16px; max-width: 420px; margin: 0 auto; padding: 10px 0; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .security-badge { font-size: 11px; background-color: #374151; color: #38bdf8; padding: 4px 8px; border-radius: 4px; font-weight: bold; width: fit-content; margin: 0 auto 10px auto; }
@@ -38,17 +39,26 @@
     .start-submit-btn:hover { background-color: var(--primary-h); }
     #simulator-zone { display: none; }
 
-    .status-dashboard { background: var(--status-bg); border: 1px solid var(--border); padding: 16px; border-radius: 6px; margin-bottom: 15px; font-size: 13.5px; line-height: 1.6; }
-    .status-top-row { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; gap: 6px; }
-    .dispatch-info { color: #cbd5e1; margin-bottom: 10px; font-size: 13px; }
+    /* ── 접이식 패널 공통 ── */
+    .collapsible-panel { background: var(--status-bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+    .collapsible-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; cursor: pointer; user-select: none; font-size: 13px; font-weight: bold; }
+    .collapsible-header:hover { background: rgba(255,255,255,0.04); }
+    .collapsible-arrow { font-size: 10px; color: #6b7280; transition: transform 0.2s; }
+    .collapsible-body { padding: 10px 14px 12px; border-top: 1px solid var(--border); }
+    .collapsible-panel.collapsed .collapsible-body { display: none; }
+    .collapsible-panel.collapsed .collapsible-arrow { transform: rotate(-90deg); }
+
+    .status-dashboard { font-size: 13px; line-height: 1.6; }
+    .status-top-row { display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-wrap: wrap; gap: 6px; font-size: 13px; }
+    .dispatch-info { color: #cbd5e1; margin-bottom: 8px; font-size: 12px; }
     .dispatch-info span { color: #38bdf8; font-weight: bold; }
 
-    .officer-status-box { background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 4px; margin-bottom: 10px; font-size: 12.5px; border: 1px solid #2d3748; }
-    .officer-line { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .officer-status-box { background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 4px; font-size: 12px; border: 1px solid #2d3748; }
+    .officer-line { display: flex; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 2px; }
     .officer-line:last-child { margin-bottom: 0; }
     .support-eta-line { color: #fbbf24; font-size: 12px; padding: 4px 0; display: none; }
 
-    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .gauge-wrapper { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 12.5px; }
     .gauge-bg { background: #374151; height: 8px; border-radius: 4px; flex: 1; overflow: hidden; }
     .gauge-fill { height: 100%; width: 100%; transition: width 0.4s ease, background-color 0.3s; }
@@ -61,7 +71,7 @@
     .gauge-fill.user-hp.warning { background: #7f1d1d; }
     .gauge-fill.user-mental.warning { background: #581c87; }
 
-    .inventory-bar { background: #111c30; border: 1px dashed var(--primary); border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+    .inventory-bar { background: #111c30; border: 1px dashed var(--primary); border-radius: 6px; padding: 10px; margin-bottom: 10px; }
     .inventory-title { font-size: 11px; color: var(--primary-h); font-weight: bold; margin-bottom: 8px; letter-spacing: 0.5px; }
     .inventory-slots { display: flex; gap: 8px; flex-wrap: wrap; }
     .item-chip { background: #1f2937; border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; font-size: 12px; color: #cbd5e1; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
@@ -70,12 +80,16 @@
     .item-chip::before { content: "■"; font-size: 8px; color: #9ca3af; }
     .item-chip.active::before { color: #60a5fa; }
 
-    #pixel-art-zone { width: 100%; height: 160px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+    .colleague-panel { background: var(--status-bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
+
+    #pixel-art-zone { width: 100%; height: 120px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
+    @media (min-width: 600px) { #pixel-art-zone { height: 160px; } }
     .live-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); border: 1px solid #ef4444; color: #ef4444; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 4px; }
     #img-loader { color: #4b5563; font-size: 13px; font-weight: bold; }
     #pixel-art-img { width: 100%; height: 100%; object-fit: contain; display: none; }
 
-    #chat-window { height: 380px; border: 1px solid var(--border); padding: 15px; overflow-y: auto; background: var(--chat-bg); border-radius: 6px; margin-bottom: 15px; scroll-behavior: smooth; }
+    #chat-window { height: 55vh; min-height: 300px; border: 1px solid var(--border); padding: 10px; overflow-y: auto; background: var(--chat-bg); border-radius: 6px; margin-bottom: 10px; scroll-behavior: smooth; }
+    @media (min-width: 600px) { #chat-window { height: 420px; padding: 15px; } }
     .message { margin-bottom: 16px; padding: 12px 16px; border-radius: 8px; max-width: 92%; line-height: 1.7; font-size: 14px; white-space: pre-wrap; word-break: break-word; }
     .user { background: var(--user-bg); color: var(--user-text); margin-left: auto; }
     .ai { background: var(--ai-bg); margin-right: auto; }
@@ -202,59 +216,82 @@
   <div id="simulator-zone">
     <h2>112 상황 대응 도상훈련 시스템</h2>
 
-    <div class="status-dashboard">
-      <div class="status-top-row">
-        <div>👮 출동대원: <span id="player-info" style="color:#60a5fa;"></span></div>
-        <div>⏳ <span id="current-stage">1 / 20 턴</span></div>
-        <div>💯 훈련점수: <span id="current-score" style="color:var(--accent-score);">0</span> 점</div>
+    <!-- ① 상황 정보 패널 (접이식) -->
+    <div class="collapsible-panel" id="panel-status">
+      <div class="collapsible-header" onclick="togglePanel('panel-status')">
+        <span>👮 출동대원: <span id="player-info" style="color:#60a5fa;"></span> &nbsp;|&nbsp; ⏳ <span id="current-stage">1 / 20 턴</span> &nbsp;|&nbsp; 💯 <span id="current-score" style="color:var(--accent-score);">0</span>점</span>
+        <span class="collapsible-arrow">▼</span>
       </div>
+      <div class="collapsible-body status-dashboard">
+        <div class="dispatch-info">
+          🚨 <span>사건번호:</span> <span id="dispatch-case-num">-</span> (코드 제로) | 📍 <span>현장:</span> <span id="dispatch-location">-</span><br>
+          📅 <span>일시:</span> <span id="dispatch-date">-</span> | 🕒 <span>상황 시각:</span> <span id="dispatch-time">-</span> | ⏱️ <span>경과:</span> <span id="elapsed-time" style="color:#ef4444;font-weight:bold;">00분 00초</span><br>
+          ⚠️ <span>용의자 특성:</span> <span id="suspect-type" style="color:#ff4545;font-weight:bold;">[파악 중]</span>
+        </div>
 
-      <div class="dispatch-info">
-        🚨 <span>사건번호:</span> <span id="dispatch-case-num">-</span> (코드 제로) | 📍 <span>현장:</span> <span id="dispatch-location">-</span><br>
-        📅 <span>일시:</span> <span id="dispatch-date">-</span> | 🕒 <span>상황 시각:</span> <span id="dispatch-time">-</span> | ⏱️ <span>경과:</span> <span id="elapsed-time" style="color:#ef4444;font-weight:bold;">00분 00초</span><br>
-        ⚠️ <span>용의자 특성:</span> <span id="suspect-type" style="color:#ff4545;font-weight:bold;">[파악 중]</span>
-      </div>
+        <!-- 체력/멘탈 → 출동대원 아래 위치 -->
+        <div class="stat-grid" style="margin-bottom:8px;">
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">❤️ 체력: <span id="txt-user-hp">100%</span></span>
+            <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
+          </div>
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">🧠 멘탈: <span id="txt-user-mental">100%</span></span>
+            <div class="gauge-bg"><div id="bar-user-mental" class="gauge-fill user-mental normal" style="width:100%;"></div></div>
+          </div>
+        </div>
 
-      <div class="officer-status-box">
-        <div class="officer-line" id="officer-kim-row">
-          <span>👮 경사 강태구: <span id="mental-kim" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-kim" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span> <span id="talk-kim"></span></span>
-        </div>
-        <div class="officer-line" id="officer-lee-row" style="display:none;">
-          <span>👮 경장 안정국: <span id="mental-lee" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-lee" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span> <span id="talk-lee"></span></span>
-        </div>
-        <div class="support-eta-line" id="support-eta-line">
-          ⏳ 추가 지원 출동 중... (<span id="support-eta-count">2</span>턴 후 도착 예정)
-        </div>
-      </div>
-
-      <div class="stat-grid">
-        <div class="gauge-wrapper">
-          <span style="white-space:nowrap;">🚨 통제도: <span id="txt-control">65%</span></span>
-          <div class="gauge-bg"><div id="bar-control" class="gauge-fill normal" style="width:65%;"></div></div>
-        </div>
-        <div class="gauge-wrapper">
-          <span style="white-space:nowrap;">⚖️ 적법률: <span id="txt-legal">90%</span></span>
-          <div class="gauge-bg"><div id="bar-legal" class="gauge-fill normal" style="width:90%;"></div></div>
-        </div>
-        <div class="gauge-wrapper">
-          <span style="white-space:nowrap;">❤️ 체력: <span id="txt-user-hp">100%</span></span>
-          <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
-        </div>
-        <div class="gauge-wrapper">
-          <span style="white-space:nowrap;">🧠 멘탈: <span id="txt-user-mental">100%</span></span>
-          <div class="gauge-bg"><div id="bar-user-mental" class="gauge-fill user-mental normal" style="width:100%;"></div></div>
+        <!-- 현장 수치 -->
+        <div class="stat-grid">
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">🚨 통제도: <span id="txt-control">65%</span></span>
+            <div class="gauge-bg"><div id="bar-control" class="gauge-fill normal" style="width:65%;"></div></div>
+          </div>
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">⚖️ 적법률: <span id="txt-legal">90%</span></span>
+            <div class="gauge-bg"><div id="bar-legal" class="gauge-fill normal" style="width:90%;"></div></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="inventory-bar">
-      <div class="inventory-title">■ INITIAL ESSENTIAL EQUIPMENT (출동 대원 장구류 파지 패널)</div>
-      <div class="inventory-slots">
-        <div id="item-pistol" class="item-chip" onclick="selectWeapon(this,'3.8구경 권총')">3.8구경 권총</div>
-        <div id="item-taser" class="item-chip" onclick="selectWeapon(this,'테이저건')">테이저건</div>
-        <div id="item-baton" class="item-chip" onclick="selectWeapon(this,'확장형 삼단봉')">확장형 삼단봉</div>
-        <div id="item-cuffs" class="item-chip" onclick="selectWeapon(this,'경찰 수갑')">경찰 수갑</div>
-        <div id="item-armor" class="item-chip" onclick="toggleArmor(this)">간이 방검복 (착용 가능)</div>
+    <!-- ② 동료 상태 패널 (접이식, 별도 분리) -->
+    <div class="collapsible-panel" id="panel-colleague">
+      <div class="collapsible-header" onclick="togglePanel('panel-colleague')">
+        <span>👥 동료 대원 상태</span>
+        <span class="collapsible-arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="officer-status-box">
+          <div class="officer-line" id="officer-kim-row">
+            <span>👮 경사 강태구: <span id="mental-kim" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-kim" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span></span>
+            <span id="talk-kim" style="color:#9ca3af;font-size:12px;"></span>
+          </div>
+          <div class="officer-line" id="officer-lee-row" style="display:none;">
+            <span>👮 경장 안정국: <span id="mental-lee" style="color:#60a5fa;font-weight:bold;">[멘탈 -]</span> <span id="trust-lee" style="color:#a855f7;font-weight:bold;">[신뢰 -]</span></span>
+            <span id="talk-lee" style="color:#9ca3af;font-size:12px;"></span>
+          </div>
+          <div class="support-eta-line" id="support-eta-line">
+            ⏳ 추가 지원 출동 중... (<span id="support-eta-count">2</span>턴 후 도착 예정)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ 장구류 패널 (접이식) -->
+    <div class="collapsible-panel" id="panel-inventory" style="background:#111c30;border-style:dashed;border-color:var(--primary);">
+      <div class="collapsible-header" onclick="togglePanel('panel-inventory')" style="color:var(--primary);">
+        <span>■ 장구류 파지 패널</span>
+        <span class="collapsible-arrow" style="color:var(--primary);">▼</span>
+      </div>
+      <div class="collapsible-body" style="padding-top:8px;">
+        <div class="inventory-slots">
+          <div id="item-pistol" class="item-chip" onclick="selectWeapon(this,'3.8구경 권총')">3.8구경 권총</div>
+          <div id="item-taser" class="item-chip" onclick="selectWeapon(this,'테이저건')">테이저건</div>
+          <div id="item-baton" class="item-chip" onclick="selectWeapon(this,'확장형 삼단봉')">확장형 삼단봉</div>
+          <div id="item-cuffs" class="item-chip" onclick="selectWeapon(this,'경찰 수갑')">경찰 수갑</div>
+          <div id="item-armor" class="item-chip" onclick="toggleArmor(this)">간이 방검복 (착용 가능)</div>
+        </div>
       </div>
     </div>
 
@@ -397,6 +434,10 @@
   const supportEtaCount= document.getElementById("support-eta-count");
 
   function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  window.togglePanel = function(id) {
+    document.getElementById(id).classList.toggle('collapsed');
+  };
 
   function getCurrentDateInfo() {
     const now = new Date();
@@ -596,7 +637,10 @@
         `- 범죄 유형: ${suspectInfo.crimeType}\n` +
         `- 용의자 성향: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `- 체포 지침: ${suspectInfo.arrestGuide}\n\n` +
-        `현장 도착 직후 상황을 사실적으로 묘사하라. 피의자 대사는 범죄 유형에 맞게 창작하라.\n` +
+        `[중요] 상황은 반드시 최근 대한민국 사회에서 실제 뉴스로 보도된 사건을 재구성한 형식으로 작성하라.\n` +
+        `예: 홍대 길거리 흉기난동, 고속도로 음주 역주행, 도심 스토킹 피의자 추격, 지하철 성범죄 현행범, 아파트 층간소음 폭행, 편의점 강도 등 최근 이슈 사건 유형.\n` +
+        `신고 경위(신고자 대사 또는 112 신고 내용)를 먼저 간략히 제시하고, 현장 도착 직후 상황을 사실적으로 묘사하라.\n` +
+        `관련 법령(경찰관 직무집행법, 형사소송법)과 판례(대법원·헌법재판소)를 상황 묘사에 녹여 넣어라.\n` +
         `선택지 3개는 현 상황에서 취할 수 있는 현실적 경찰 조치여야 한다.\n` +
         `한자 절대 사용 금지. 100% 한글로만 출력.${lawCtx}`;
 
@@ -816,7 +860,8 @@
         `너는 대한민국 경찰 112 초동출동 훈련 시뮬레이터다.\n` +
         `피훈련자: ${player.name} ${player.rank} | 동행: 강태구 경사 | 현장: ${selectedJurisdiction} ${currentLocation}\n` +
         `범죄 유형: ${suspectInfo.crimeType} | 용의자: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
-        `현장 도착 직후 상황을 사실적으로 묘사하라. 한자 절대 사용 금지.${lawCtx}`;
+        `[중요] 최근 대한민국 뉴스에서 보도된 실제 사건을 재구성한 형식으로 상황을 작성하라.\n` +
+        `관련 법령과 판례를 상황 묘사에 녹여 넣어라. 한자 절대 사용 금지.${lawCtx}`;
       const startMsg = await fetchGeminiResponse(`${player.name} ${player.rank} 현장 도착.`, initPrompt);
       loadingDiv.remove();
       formatAndAppendMessage(startMsg, "ai");
@@ -898,8 +943,9 @@
       `[평가 지침]\n` +
       `- 경찰관 직무집행법 제2조(직무범위)에만 집중하지 말 것.\n` +
       `- 잘한 점·미흡한 점 각 항목마다 위 조문(제3조·제5조·제10조의2·제10조의4·제11조의2) 중 적절한 조항을 반드시 인용.\n` +
-      `- 가능하면 관련 판례(대법원·헌법재판소)도 1~2회 인용.\n` +
-      `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가.\n\n` +
+      `- 판례를 적극적으로 인용하라: 잘한 점과 미흡한 점 각각 최소 1개 이상의 대법원 또는 헌법재판소 판례를 반드시 포함하라.\n` +
+      `  예: (대법원 2015다248342), (대법원 2014도9172), (헌재 2002헌마51) 등 위 판례에서 직접 인용.\n` +
+      `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가. 수치가 낮으면 그 원인을 법령 기준으로 분석하라.\n\n` +
       `출력 포맷 (반드시 이 순서로, 이모지 접두사 포함):\n` +
       `📝 훈련 총평 | (3~5줄 서술형. 종료 사유와 현장 수치를 종합)\n` +
       `🟢 잘한 점 | 항목1 [법령 인용]\n🟢 잘한 점 | 항목2 [법령 인용]\n🟢 잘한 점 | 항목3 [법령 인용]\n` +
@@ -1104,20 +1150,6 @@
       text = chatInputEl.value.trim();
       if (!text) return;
       const isRadioReport = isRadioMode;
-      // 무보고 4턴 초과이고 이번 턴도 무전 아님 → 서장 호통 게임오버
-      if (preNoReport >= 4 && !isRadioReport) {
-        disableGameInput("보고 불이행");
-        const d = document.createElement("div");
-        d.className = "message ai";
-        d.innerHTML =
-          `<span class="radio-comms">🚨 무전 교신 | 경찰서장: "${player.name} ${player.rank}! 지금 당장 상황 보고가 없는 겁니까?! ` +
-          `${preNoReport}턴째 상황실을 묵살하고 있소! 즉각 현장 지휘권 박탈 명령을 하달하겠소!"</span>` +
-          `<br><p style="color:#ef4444;">⛔ 상황 보고 불이행으로 경찰서장이 직무집행 정지 명령을 내렸습니다.</p>`;
-        chatWindow.appendChild(d);
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-        await triggerFinalEvaluation("보고불이행");
-        return;
-      }
       if (isRadioReport || text.includes("보고") || text.includes("상황실")) lastReportTurn = turnCount;
       const isOpt = pendingOptionClick; pendingOptionClick = false;
       prefix = isRadioMode ? `⚡ [${player.name} ${player.rank} → 112상황실 무전] ` : isOpt ? `🎯 [${player.name} ${player.rank} 선택] ` : `🗣️ [${player.name} ${player.rank} 발언] `;

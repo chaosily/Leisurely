@@ -237,13 +237,12 @@
         <span class="collapsible-arrow">▼</span>
       </div>
       <div class="collapsible-body status-dashboard">
-        <div class="dispatch-info">
-          🚨 <span>사건번호:</span> <span id="dispatch-case-num">-</span> (코드 제로) | 📍 <span>현장:</span> <span id="dispatch-location">-</span><br>
-          📅 <span>일시:</span> <span id="dispatch-date">-</span> | 🕒 <span>상황 시각:</span> <span id="dispatch-time">-</span> | ⏱️ <span>경과:</span> <span id="elapsed-time" style="color:#ef4444;font-weight:bold;">00분 00초</span><br>
-          ⚠️ <span>용의자 특성:</span> <span id="suspect-type" style="color:#ff4545;font-weight:bold;">[파악 중]</span>
+        <!-- 사망 배너 -->
+        <div id="death-banner" style="display:none;background:rgba(239,68,68,0.15);border:1px solid #ef4444;color:#ef4444;font-weight:bold;text-align:center;padding:8px;border-radius:6px;margin-bottom:8px;">
+          💀 대원 사망 — 임무 수행 불가 상태
         </div>
 
-        <!-- 체력/멘탈 → 출동대원 아래 위치 -->
+        <!-- 체력/멘탈 → 유저 항목 바로 아래 -->
         <div class="stat-grid" style="margin-bottom:8px;">
           <div class="gauge-wrapper">
             <span style="white-space:nowrap;">❤️ 체력: <span id="txt-user-hp">100%</span></span>
@@ -255,7 +254,13 @@
           </div>
         </div>
 
-        <!-- 현장 수치 -->
+        <div class="dispatch-info">
+          🚨 <span>사건번호:</span> <span id="dispatch-case-num">-</span> (코드 제로) | 📍 <span>현장:</span> <span id="dispatch-location">-</span><br>
+          📅 <span>일시:</span> <span id="dispatch-date">-</span> | 🕒 <span>상황 시각:</span> <span id="dispatch-time">-</span> | ⏱️ <span>경과:</span> <span id="elapsed-time" style="color:#ef4444;font-weight:bold;">00분 00초</span><br>
+          ⚠️ <span>용의자 특성:</span> <span id="suspect-type" style="color:#ff4545;font-weight:bold;">[파악 중]</span>
+        </div>
+
+        <!-- 현장 수치 (용의자 특성 아래) -->
         <div class="stat-grid">
           <div class="gauge-wrapper">
             <span style="white-space:nowrap;">🚨 통제도: <span id="txt-control">65%</span></span>
@@ -835,6 +840,22 @@
     // 패널 헤더 미니 표시 (접힘 상태에서도 확인 가능)
     const mini = { "hp-mini": userHp, "mt-mini": userMental, "ctrl-mini": controlRate, "legal-mini": legalRate };
     Object.entries(mini).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.textContent = v; });
+
+    // 사망 상태 표시
+    const deathBanner = document.getElementById("death-banner");
+    if (userHp <= 0) {
+      if (deathBanner) deathBanner.style.display = "block";
+      const hpMini = document.getElementById("hp-mini");
+      if (hpMini) hpMini.textContent = "0 💀";
+      if (!playerInfoEl.dataset.dead) {
+        playerInfoEl.dataset.dead = "1";
+        playerInfoEl.innerHTML = `${esc(playerInfoEl.textContent)} <span style="color:#ef4444;">💀 사망</span>`;
+      }
+      // 상태 패널 강제 펼침 (사망 배너 노출)
+      document.getElementById("panel-status").classList.remove("collapsed");
+    } else if (deathBanner) {
+      deathBanner.style.display = "none";
+    }
   }
 
   async function fetchLawContext(userText) {
@@ -885,19 +906,12 @@
     sendActionBtn.disabled = true;
     chatInputEl.disabled = true;
     actionInputEl.disabled = true;
-  }
-
-  function addRestartButtons() {
-    const div = document.createElement("div");
-    div.className = "message ai";
-    div.style.textAlign = "center";
-    div.style.padding = "12px";
-    div.innerHTML =
-      `<p style="color:#9ca3af;margin-bottom:10px;font-size:12px;">훈련 세션이 종료되었습니다.</p>` +
-      `<button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>` +
-      `<button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>`;
-    chatWindow.appendChild(div);
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    radioToggleBtn.disabled = true;
+    radioToggleBtn.style.opacity = "0.4";
+    // 모든 장구 토글 잠금
+    document.querySelectorAll(".inventory-slots .item-chip").forEach(c => c.classList.add("disabled"));
+    // 기존 추천 선택지 버튼 잠금 (이후 추가되는 종합평가 버튼은 영향 없음)
+    document.querySelectorAll(".option-btn").forEach(b => { b.disabled = true; });
   }
 
   window.resetTraining = function() {
@@ -920,6 +934,11 @@
     sendChatBtn.disabled = false; sendActionBtn.disabled = false;
     chatInputEl.disabled = false; actionInputEl.disabled = false;
     radioToggleBtn.classList.remove("active"); radioToggleBtn.textContent = "무전 OFF";
+    radioToggleBtn.disabled = false; radioToggleBtn.style.opacity = "1";
+    // 사망 상태 복구
+    delete playerInfoEl.dataset.dead;
+    playerInfoEl.textContent = `${player.rank} ${player.name}`;
+    const db = document.getElementById("death-banner"); if (db) db.style.display = "none";
     chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
     weaponPrefixEl.style.display = "none";
     document.querySelectorAll(".inventory-slots .item-chip").forEach(c => {
@@ -984,7 +1003,8 @@
     div.innerHTML = `<span class="system-alert">🚨 도상훈련 강제 종료 (GAME OVER)</span><br><p>${reasonText}</p><br><p style="color:#fbbf24;">최종 훈련 점수: <strong>${score}점</strong></p>`;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
-    addRestartButtons();
+    // 강제 종료도 종합평가로 연결 (종합평가 보기 버튼만 활성)
+    triggerFinalEvaluation(reasonText);
   }
 
   async function triggerArrest() {
@@ -1087,9 +1107,7 @@
     evalBtnDiv.style.cssText = "text-align:center;padding:16px;";
     evalBtnDiv.innerHTML =
       `<p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">훈련이 종료되었습니다. 종합평가를 확인하세요.</p>` +
-      `<button class="option-btn" onclick="showEvalPage(window._pendingEvalReply, window._pendingEvalReason)" style="background:#1e3a8a;margin:4px;font-size:14px;padding:12px 24px;">📊 종합평가 보기</button>` +
-      `<button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기</button>` +
-      `<button class="option-btn" onclick="newTraining()" style="background:#374151;margin:4px;">🆕 새로 하기</button>`;
+      `<button class="option-btn" onclick="showEvalPage(window._pendingEvalReply, window._pendingEvalReason)" style="background:#1e3a8a;margin:4px;font-size:14px;padding:12px 24px;">📊 종합평가 보기</button>`;
     chatWindow.appendChild(evalBtnDiv);
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }

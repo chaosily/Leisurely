@@ -137,6 +137,13 @@
     .eval-td-good { color: #a7f3d0; border-right: 1px solid var(--border); }
     .eval-td-bad  { color: #fed7aa; }
     .eval-restart-row { text-align: center; padding-top: 8px; border-top: 1px dashed var(--border); }
+
+    /* ── 사망 연출 ── */
+    #death-vignette { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(127,29,29,0.55) 100%); }
+    body.death-mode #death-vignette { display: block; animation: deathPulse 2s ease-in-out infinite; }
+    body.death-mode #chat-window { filter: grayscale(0.85) brightness(0.8); }
+    @keyframes deathPulse { 0%,100% { opacity: 0.7; } 50% { opacity: 1; } }
     .option-btn { background: #1f2937; border: 1px solid var(--accent-options); color: #f3f4f6; padding: 10px 14px; border-radius: 6px; text-align: left; font-size: 13px; cursor: pointer; transition: all 0.2s; }
     .option-btn:hover:not(:disabled) { background: #2d3748; box-shadow: 0 0 6px rgba(251,191,36,0.3); }
     .option-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: #374151; }
@@ -270,6 +277,14 @@
             <span style="white-space:nowrap;">⚖️ 적법률: <span id="txt-legal">90%</span></span>
             <div class="gauge-bg"><div id="bar-legal" class="gauge-fill normal" style="width:90%;"></div></div>
           </div>
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">💢 저항도: <span id="txt-resist">100%</span></span>
+            <div class="gauge-bg"><div id="bar-resist" class="gauge-fill" style="width:100%;background:#f97316;"></div></div>
+          </div>
+          <div class="gauge-wrapper" id="victim-gauge-row" style="display:none;">
+            <span style="white-space:nowrap;">🧍 피해자: <span id="txt-victim">100%</span></span>
+            <div class="gauge-bg"><div id="bar-victim" class="gauge-fill" style="width:100%;background:#38bdf8;"></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -328,6 +343,7 @@
         <span class="input-desc-label">🛡️ 현장조치</span>
         <span id="weapon-prefix" class="weapon-prefix-badge"></span>
         <span id="action-hint" class="input-hint">장구 미파지 — 전술 조치를 입력하세요</span>
+        <button id="manual-hint-btn" onclick="showManualHint()" style="display:none;margin-left:auto;background:#374151;border:1px solid #4b5563;color:#fbbf24;font-size:11px;padding:3px 8px;border-radius:4px;cursor:pointer;">📖 표준 대응 힌트</button>
       </div>
       <!-- 2행: 조치 입력 (2줄) -->
       <div class="input-row">
@@ -349,6 +365,7 @@
   </div>
 
   <div id="eval-zone"></div>
+  <div id="death-vignette"></div>
 </div>
 
 <script>
@@ -380,13 +397,13 @@
   // attackMode: "physical"(체력감소), "verbal"(멘탈감소), "random"
   // armedWith: "gun"(총기 50% 즉사/-50~80), "blade"(도검 20% 즉사/-30~60), "blunt"(둔기 -20~50), "none"(맨손 -5~15)
   const SUSPECT_POOL = [
-    { type: "깡패형",     crimeType: "특수폭행",       desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", armedWith: "blade", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
-    { type: "사이코형",   crimeType: "특수협박",       desc: "예측 불가 행동, 사제총기·흉기 위협",        attackMode: "both",     armedWith: "gun",   arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
-    { type: "교활형",     crimeType: "절도·사기",     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   armedWith: "none",  arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
-    { type: "성범죄자형", crimeType: "강간·성추행",   desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   armedWith: "none",  arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
-    { type: "음주폭력형", crimeType: "폭행·상해",     desc: "만취 상태 폭행, 둔기 휘두름",               attackMode: "physical", armedWith: "blunt", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압.", lawKeyword: "경찰장구" },
-    { type: "교통도주형", crimeType: "교통사고 후 도주", desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
-    { type: "가정폭력형", crimeType: "가정폭력·아동학대", desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   armedWith: "blunt", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
+    { type: "깡패형",     crimeType: "특수폭행",       hasVictim: true,        desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", armedWith: "blade", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
+    { type: "사이코형",   crimeType: "특수협박",       hasVictim: true,        desc: "예측 불가 행동, 사제총기·흉기 위협",        attackMode: "both",     armedWith: "gun",   arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
+    { type: "교활형",     crimeType: "절도·사기",     hasVictim: false,     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   armedWith: "none",  arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
+    { type: "성범죄자형", crimeType: "강간·성추행",   hasVictim: true,    desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   armedWith: "none",  arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
+    { type: "음주폭력형", crimeType: "폭행·상해",     hasVictim: true,      desc: "만취 상태 폭행, 둔기 휘두름",               attackMode: "physical", armedWith: "blunt", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압.", lawKeyword: "경찰장구" },
+    { type: "교통도주형", crimeType: "교통사고 후 도주", hasVictim: true,  desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
+    { type: "가정폭력형", crimeType: "가정폭력·아동학대", hasVictim: true,  desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   armedWith: "blunt", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
   ];
 
   const KIM_TALK_POOL = {
@@ -424,6 +441,9 @@
   let pistolTension = false;    // 권총 파지에 용의자 격앙 (공격 확률↑)
   let turnLog = [];             // 턴별 조치 기록
   let difficulty = "중급";
+  let suspectResist = 100;      // 용의자 저항도 (낮을수록 체포 용이)
+  let victimSafety = 100;       // 피해자 안전도 (0이면 보호 실패 게임오버)
+  let hasVictim = false;        // 이번 시나리오에 보호 대상 존재 여부
   const DIFF_FACTOR = { "초급": { atk: 0.75, fatal: 0.5 }, "중급": { atk: 1.0, fatal: 1.0 }, "상급": { atk: 1.2, fatal: 1.5 } };
   let suspectInfo = null;
   let suspectRevealed = false;  // 용의자 특성 공개 여부
@@ -475,6 +495,84 @@
 
   window.togglePanel = function(id) {
     document.getElementById(id).classList.toggle('collapsed');
+  };
+
+  // ── Web Audio 효과음 (파일 불필요) ─────────────────────────────
+  let audioCtx = null;
+  function getAudio() {
+    if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+    return audioCtx;
+  }
+  function playSfx(type) {
+    const ctx = getAudio(); if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      if (type === "radio") {
+        // 무전 지직음: 짧은 노이즈
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.25;
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1800;
+        const g = ctx.createGain(); g.gain.value = 0.4;
+        src.connect(bp).connect(g).connect(ctx.destination); src.start(now);
+      } else if (type === "gunshot") {
+        const buf = ctx.createBuffer(1, ctx.sampleRate * 0.3, ctx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5);
+        const src = ctx.createBufferSource(); src.buffer = buf;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.9, now); g.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        src.connect(g).connect(ctx.destination); src.start(now);
+      } else if (type === "taser") {
+        const osc = ctx.createOscillator(); osc.type = "square"; osc.frequency.value = 55;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.25, now); g.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 28;
+        const lg = ctx.createGain(); lg.gain.value = 30;
+        lfo.connect(lg).connect(osc.frequency);
+        osc.connect(g).connect(ctx.destination); osc.start(now); lfo.start(now);
+        osc.stop(now + 0.5); lfo.stop(now + 0.5);
+      } else if (type === "hit") {
+        const osc = ctx.createOscillator(); osc.type = "sine";
+        osc.frequency.setValueAtTime(160, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.6, now); g.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.connect(g).connect(ctx.destination); osc.start(now); osc.stop(now + 0.25);
+      } else if (type === "death") {
+        const osc = ctx.createOscillator(); osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(35, now + 1.2);
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.4, now); g.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        osc.connect(g).connect(ctx.destination); osc.start(now); osc.stop(now + 1.2);
+      }
+    } catch (e) { /* 사운드 실패 무시 */ }
+  }
+
+  // ── 돌발 이벤트 (턴당 15%) ─────────────────────────────────────
+  const RANDOM_EVENTS = [
+    { id: "escape",  desc: "용의자가 갑자기 도주를 시도한다!",            apply: () => { controlRate = Math.max(0, controlRate - 10); suspectResist = Math.min(100, suspectResist + 5); } },
+    { id: "citizen", desc: "취객 시민이 통제선 안으로 난입한다!",         apply: () => { controlRate = Math.max(0, controlRate - 7); if (hasVictim) victimSafety = Math.max(0, victimSafety - 8); } },
+    { id: "media",   desc: "언론 취재진이 도착해 카메라를 켰다!",         apply: () => { if (controlRate < 50) legalRate = Math.max(0, legalRate - 5); } },
+    { id: "rage",    desc: "용의자가 극도로 흥분하기 시작한다!",          apply: () => { suspectResist = Math.min(100, suspectResist + 10); } },
+    { id: "crowd",   desc: "구경꾼이 몰려들어 현장이 혼잡해진다!",        apply: () => { controlRate = Math.max(0, controlRate - 5); } },
+  ];
+  function rollRandomEvent() {
+    if (Math.random() >= 0.15) return null;
+    const ev = RANDOM_EVENTS[randInt(0, RANDOM_EVENTS.length - 1)];
+    ev.apply();
+    appendSystemNote(`⚡ 돌발 상황: ${ev.desc}`);
+    return ev;
+  }
+
+  // ── 초급 매뉴얼 힌트 ───────────────────────────────────────────
+  window.showManualHint = function() {
+    const guide = suspectRevealed
+      ? `[${suspectInfo.type}] 표준 대응: ${suspectInfo.arrestGuide}`
+      : "용의자 성향 미파악 — 거리 유지, 경고 후 관찰, 상황실 조기 보고가 원칙입니다.";
+    const stateHint = [];
+    if (turnCount - lastReportTurn >= 2) stateHint.push("📡 상황실 보고가 늦어지고 있습니다. 무전 보고 권장.");
+    if (suspectResist <= 40) stateHint.push("💢 저항도가 낮습니다. 수갑 체포 시도 적기입니다.");
+    else if (suspectResist > 70) stateHint.push("💢 저항이 강합니다. 경고·공포탄·테이저로 저항도를 낮추세요.");
+    if (hasVictim && victimSafety < 60) stateHint.push("🧍 피해자 안전 위험! 분리·대피 조치가 시급합니다.");
+    if (!isArmorEquipped && (suspectInfo.armedWith === "blade" || suspectInfo.armedWith === "gun")) stateHint.push("🦺 무장 용의자 — 방검복 착용을 권장합니다.");
+    appendSystemNote(`📖 ${guide}${stateHint.length ? "\n" + stateHint.join("\n") : ""}`);
   };
 
   function getCurrentDateInfo() {
@@ -688,6 +786,9 @@
     suspectRevealed = false;
     suspectRevealTurn = randInt(2, 5);
     suspectTypeEl.textContent = `[??? - 용의자 정보 수집 중]`;
+    suspectResist = randInt(85, 100);
+    hasVictim = !!suspectInfo.hasVictim;
+    victimSafety = hasVictim ? randInt(70, 90) : 100;
 
     kimMental = randInt(60, 90);
     kimTrust  = randInt(60, 90);
@@ -720,6 +821,18 @@
     updatePixelArt(1);
     updateWeaponChips();
     updateInputHints();
+
+    // 초급 난이도: 표준 대응 힌트 버튼 노출
+    const hintBtn = document.getElementById("manual-hint-btn");
+    if (hintBtn) hintBtn.style.display = difficulty === "초급" ? "inline-block" : "none";
+
+    // 오답 노트: 지난 훈련 개선 과제 리마인드
+    try {
+      const lastBad = JSON.parse(localStorage.getItem("lastBadItems") || "[]");
+      if (lastBad.length > 0) {
+        appendSystemNote(`📋 지난 훈련 개선 과제:\n${lastBad.slice(0, 3).map((b, i) => `${i + 1}. ${b}`).join("\n")}`);
+      }
+    } catch (e) { /* localStorage 실패 무시 */ }
 
     const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 생성 중 ]", "ai");
 
@@ -841,6 +954,20 @@
     const mini = { "hp-mini": userHp, "mt-mini": userMental, "ctrl-mini": controlRate, "legal-mini": legalRate };
     Object.entries(mini).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.textContent = v; });
 
+    // 저항도 / 피해자 안전 게이지
+    const txtResist = document.getElementById("txt-resist");
+    const barResist = document.getElementById("bar-resist");
+    if (txtResist) { txtResist.textContent = `${suspectResist}%`; barResist.style.width = `${suspectResist}%`;
+      barResist.style.background = suspectResist <= 40 ? "#10b981" : "#f97316"; }
+    if (hasVictim) {
+      const row = document.getElementById("victim-gauge-row");
+      if (row) row.style.display = "flex";
+      const tv = document.getElementById("txt-victim");
+      const bv = document.getElementById("bar-victim");
+      if (tv) { tv.textContent = `${victimSafety}%`; bv.style.width = `${victimSafety}%`;
+        bv.style.background = victimSafety <= 40 ? "#ef4444" : "#38bdf8"; }
+    }
+
     // 사망 상태 표시
     const deathBanner = document.getElementById("death-banner");
     if (userHp <= 0) {
@@ -850,11 +977,14 @@
       if (!playerInfoEl.dataset.dead) {
         playerInfoEl.dataset.dead = "1";
         playerInfoEl.innerHTML = `${esc(playerInfoEl.textContent)} <span style="color:#ef4444;">💀 사망</span>`;
+        playSfx("death");
       }
+      document.body.classList.add("death-mode");
       // 상태 패널 강제 펼침 (사망 배너 노출)
       document.getElementById("panel-status").classList.remove("collapsed");
-    } else if (deathBanner) {
-      deathBanner.style.display = "none";
+    } else {
+      if (deathBanner) deathBanner.style.display = "none";
+      document.body.classList.remove("death-mode");
     }
   }
 
@@ -921,11 +1051,17 @@
     pistolAmmo = 3; taserCount = 2; warningGiven = false; pistolTension = false; lastShotWasBlank = false;
     turnLog = [];
     userHp = 100; userMental = 100;
+    document.body.classList.remove("death-mode");
     kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;
     leeMental = 0; leeTrust = 0; leeHp = 100;
     supportRequested = false; supportArrivalTurn = -1; supportArrived = false;
     suspectInfo = SUSPECT_POOL[randInt(0, SUSPECT_POOL.length - 1)];
     suspectRevealed = false; suspectRevealTurn = randInt(2, 5);
+    suspectResist = randInt(85, 100);
+    hasVictim = !!suspectInfo.hasVictim;
+    victimSafety = hasVictim ? randInt(70, 90) : 100;
+    const vRow = document.getElementById("victim-gauge-row");
+    if (vRow) vRow.style.display = hasVictim ? "flex" : "none";
     lastReportTurn = 1;
 
     chatWindow.innerHTML = "";
@@ -976,6 +1112,12 @@
 
   // Expose a restart-friendly entry point (skips login validation)
   handleLogin._restart = async function() {
+    try {
+      const lastBad = JSON.parse(localStorage.getItem("lastBadItems") || "[]");
+      if (lastBad.length > 0) {
+        appendSystemNote(`📋 지난 훈련 개선 과제:\n${lastBad.slice(0, 3).map((b, i) => `${i + 1}. ${b}`).join("\n")}`);
+      }
+    } catch (e) {}
     const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 재생성 중 ]", "ai");
     try {
       const lawCtx = await fetchLawContext(suspectInfo.lawKeyword || "경찰관 직무집행법");
@@ -1014,9 +1156,10 @@
       `너는 대한민국 경찰관 초동조치 도상훈련 평가관이다.\n` +
       `피훈련자 ${player.name} ${player.rank}이 수갑을 사용하여 용의자 체포를 시도했다.\n` +
       `용의자 성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n` +
-      `현장 수치: 통제도 ${controlRate}% / 적법률 ${legalRate}% / 체력 ${userHp}% / 멘탈 ${userMental}%\n` +
+      `현장 수치: 통제도 ${controlRate}% / 적법률 ${legalRate}% / 체력 ${userHp}% / 멘탈 ${userMental}% / 용의자 저항도 ${suspectResist}%\n` +
       `삼단봉 파지 여부: ${isBatonActive ? "예(제압 유리)" : "아니오"}\n\n` +
-      `체포 성공 여부를 적법률과 통제도, 삼단봉 파지 여부를 고려하여 판정하라.\n` +
+      `체포 성공 여부를 저항도·적법률·통제도, 삼단봉 파지 여부를 고려하여 판정하라.\n` +
+      `저항도 40% 이하면 체포 순조롭게 성공. 40~70%면 격렬한 몸싸움 끝에 성공. 70% 초과면 체포 실패 위기 끝에 가까스로 성공 또는 동료 지원으로 성공.\n` +
       `적법률 50% 이상, 통제도 40% 이상이면 체포 성공 가능.\n\n` +
       `출력 포맷:\n` +
       `💬 현장 대사 | (용의자 또는 동료 대사)\n` +
@@ -1077,7 +1220,7 @@
       `종료 사유: ${reasonMap[reason] || reason}\n` +
       `진행 턴: ${turnCount - 1}/${maxTurns}턴 | 용의자: [${suspectInfo.type}] ${suspectInfo.crimeType}\n` +
       `훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
-      `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}%\n` +
+      `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}% | 용의자 저항도: ${suspectResist}%${hasVictim ? ` | 피해자 안전도: ${victimSafety}%` : ""}\n` +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
       `\n${LAW_CONTEXT}${ragCtx}\n\n` +
@@ -1152,12 +1295,32 @@
     const scoreNum = (aiScore > 0) ? aiScore : calcClientScore();
     const scoreColor = scoreNum >= 80 ? '#10b981' : scoreNum >= 60 ? '#fbbf24' : '#f97316';
 
+    // ── 오답 노트 저장 (다음 훈련 시작 시 리마인드) ──
+    try { localStorage.setItem("lastBadItems", JSON.stringify(badItems.slice(0, 5))); } catch (e) {}
+
+    // ── 훈련 이력 저장 (Supabase, 실패 무시) ──
+    try {
+      fetch(`${SUPABASE_URL}/rest/v1/training_results`, {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: player.name, rank: player.rank, jurisdiction: selectedJurisdiction,
+          suspect_type: suspectInfo.type, crime_type: suspectInfo.crimeType,
+          score: score, control_rate: controlRate, legal_rate: legalRate,
+          hp: userHp, mental: userMental, end_reason: reasonText,
+          final_score: scoreNum, turns: turnCount - 1, difficulty: difficulty
+        })
+      }).catch(() => {});
+    } catch (e) {}
+
     // ── 통계 카드 ───────────────────────────────────
     const statCards = [
       { label: '훈련 점수', value: `${score}점`, color: '#fbbf24' },
       { label: '현장 통제도', value: `${controlRate}%`, color: controlRate >= 50 ? '#10b981' : '#f97316' },
       { label: '적법 조치율', value: `${legalRate}%`, color: legalRate >= 60 ? '#60a5fa' : '#f97316' },
       { label: '체력/멘탈', value: `${userHp}%/${userMental}%`, color: '#a78bfa' },
+      { label: '용의자 저항도', value: `${suspectResist}%`, color: suspectResist <= 40 ? '#10b981' : '#f97316' },
+      ...(hasVictim ? [{ label: '피해자 안전도', value: `${victimSafety}%`, color: victimSafety >= 60 ? '#38bdf8' : '#ef4444' }] : []),
     ].map(c => `<div class="eval-stat-card"><div class="eval-stat-label">${c.label}</div><div class="eval-stat-value" style="color:${c.color}">${c.value}</div></div>`).join('');
 
     // ── 잘한점/미흡한점 표 ─────────────────────────
@@ -1224,28 +1387,30 @@
 
     if (inputType === "action") {
       if (weaponUsed === "3.8구경 권총") {
+        playSfx("gunshot");
         if (lastShotWasBlank) {
           // 공포탄: 위협 사격 (적법률 부담 낮음)
           legalDelta -= 5;
-          if (Math.random() < 0.55) { ctrlDelta += 10; notes.push("🔫 공포탄 경고사격 효과: 통제도↑"); }
-          else                      { ctrlDelta -= 6;  notes.push("🔫 공포탄에도 용의자 반응 없음: 통제도↓"); }
+          if (Math.random() < 0.55) { ctrlDelta += 10; suspectResist = Math.max(0, suspectResist - 8); notes.push("🔫 공포탄 경고사격 효과: 통제도↑ 저항도↓"); }
+          else                      { ctrlDelta -= 6;  suspectResist = Math.max(0, suspectResist - 2); notes.push("🔫 공포탄에도 용의자 반응 없음: 통제도↓"); }
         } else {
           // 실탄
           legalDelta -= 15;
           if (!warningGiven) { legalDelta -= 8; notes.push("⚖️ 경고 절차 미준수 실탄 사용: 적법률↓↓ (경직법 제10조의4 위반 소지)"); }
           if (controlRate > 65) { legalDelta -= 5; notes.push("⚖️ 권총 과잉사용: 적법률↓↓"); }
-          if (Math.random() < 0.70) { ctrlDelta += 15; notes.push("🔫 실탄 제압 성공: 통제도↑↑"); }
-          else                      { ctrlDelta -= 10; notes.push("🔫 실탄 제압 실패: 통제도↓"); }
+          if (Math.random() < 0.70) { ctrlDelta += 15; suspectResist = Math.max(0, suspectResist - 30); notes.push("🔫 실탄 제압 성공: 통제도↑↑ 저항도↓↓"); }
+          else                      { ctrlDelta -= 10; suspectResist = Math.max(0, suspectResist - 5); notes.push("🔫 실탄 제압 실패: 통제도↓"); }
         }
       } else if (weaponUsed === "테이저건") {
         legalDelta -= 8;
         if (suspectRevealed && suspectInfo.attackMode === "verbal") { legalDelta -= 3; notes.push("⚖️ 테이저 부적절: 언어적 위협에 물리력 행사"); }
-        if (Math.random() < 0.60) { ctrlDelta += 14; notes.push("⚡ 테이저 제압 성공: 통제도↑"); }
-        else                      { ctrlDelta -= 8;  notes.push("⚡ 테이저 빗나감: 통제도↓"); }
+        playSfx("taser");
+        if (Math.random() < 0.60) { ctrlDelta += 14; suspectResist = Math.max(0, suspectResist - 35); notes.push("⚡ 테이저 제압 성공: 통제도↑ 저항도↓↓↓"); }
+        else                      { ctrlDelta -= 8;  suspectResist = Math.max(0, suspectResist - 3); notes.push("⚡ 테이저 빗나감: 통제도↓"); }
       } else if (weaponUsed === "확장형 삼단봉") {
         legalDelta -= 3;
-        if (Math.random() < 0.70) { ctrlDelta += 9; notes.push("🪃 삼단봉 제압 성공: 통제도↑"); }
-        else                      { ctrlDelta -= 5; notes.push("🪃 삼단봉 제압 실패: 통제도↓"); }
+        if (Math.random() < 0.70) { ctrlDelta += 9; suspectResist = Math.max(0, suspectResist - 20); notes.push("🪃 삼단봉 제압 성공: 통제도↑ 저항도↓↓"); }
+        else                      { ctrlDelta -= 5; suspectResist = Math.max(0, suspectResist - 3); notes.push("🪃 삼단봉 제압 실패: 통제도↓"); }
       } else if (weaponUsed === "경찰 수갑") {
         legalDelta += 5; ctrlDelta += 5;
       } else {
@@ -1253,6 +1418,7 @@
       }
     } else {
       if (isRadioTurn) {
+        playSfx("radio");
         ctrlDelta += 3; legalDelta += 5;
         if (preNoReport <= 2) { score += 5; scoreEl.textContent = score; notes.push("📡 조기 보고: 훈련점수 +5"); }
       } else if (/(강태구|안정국)/.test(text) && /(테이저|삼단봉|권총|제압|검거|체포|진압)/.test(text)) {
@@ -1267,6 +1433,7 @@
         } else { ctrlDelta -= 4; notes.push(`👮 ${who}이(가) 지시를 거부합니다! (신뢰 붕괴)`); }
       } else if (/경고|정지|멈춰|손들어|내려놔|엎드려/.test(text)) {
         ctrlDelta += 4; legalDelta += 5;
+        suspectResist = Math.max(0, suspectResist - 5);
       } else {
         ctrlDelta += 1;
       }
@@ -1321,8 +1488,21 @@
         } else if (dmg > 0) {
           userHp = Math.max(0, userHp - dmg);
           notes.push(`${icon} 용의자 공격 피격: 체력 -${dmg}`);
+          playSfx("hit");
           if (navigator.vibrate) { try { navigator.vibrate(180); } catch (e) {} }
         }
+      }
+    }
+
+    // 피해자 안전 변화
+    if (hasVictim) {
+      if (/피해자|대피|보호|분리|구조|격리|안전/.test(text)) {
+        victimSafety = Math.min(100, victimSafety + randInt(10, 15));
+        score += 5; scoreEl.textContent = score;
+        notes.push("🧍 피해자 보호 조치: 안전도↑ 훈련점수 +5");
+      } else {
+        victimSafety = Math.max(0, victimSafety - randInt(3, 8));
+        if (victimSafety <= 40) notes.push("🧍 피해자 위험 수위! 보호 조치 필요");
       }
     }
 
@@ -1458,6 +1638,10 @@
       const isRadioTurn = radioUsedThisTurn;
       radioUsedThisTurn = false; // 초기화
 
+      // 돌발 이벤트 (15%) — 효과 즉시 적용 + AI가 서사에 반영
+      const randomEvent = rollRandomEvent();
+      if (randomEvent) updateStatusBars();
+
       const systemPrompt =
         `[절대 규칙] 너는 반드시 아래 지정된 포맷으로만 응답해야 한다. 자기소개, 설명, 메타 대화 금지.\n` +
         `출력 포맷 예시:\n` +
@@ -1477,7 +1661,10 @@
         (supportArrived ? `안정국 경장: 멘탈${leeMental}/신뢰${leeTrust}/체력${leeHp} → ${leeFreeze ? "⚠️ 움직이지 못하는 상태." : leeIgnore ? "⚠️ 명령 무시 가능." : "정상 대응 가능."}\n` : `안정국 경장: 미출동 (추가 지원 요청 필요)\n`) +
         `\n[현재 현장 수치]\n` +
         `통제도: ${controlRate}% | 적법률: ${legalRate}% | 유저 체력: ${userHp}% | 유저 멘탈: ${userMental}%\n` +
+        `용의자 저항도: ${suspectResist}%${hasVictim ? ` | 피해자 안전도: ${victimSafety}%` : ""}\n` +
         `미보고 경과 턴: ${noReportTurns}턴\n\n` +
+        (randomEvent ? `[돌발 상황 - 반드시 이번 턴 서사에 반영]\n${randomEvent.desc}\n\n` : "") +
+        (hasVictim ? `[피해자 상황]\n현장에 보호 대상 피해자가 있다. 안전도 ${victimSafety}%. ${victimSafety <= 40 ? "피해자가 심각한 위험에 처해 있다 — 상황 묘사에 긴박하게 반영하라." : "피해자 상태를 상황 묘사에 자연스럽게 포함하라."}\n\n` : "") +
         `[장구 현황]\n삼단봉 파지: ${isBatonActive ? "활성(공격력↑)" : "미파지"} | 수갑: ${isCuffsActive ? "파지 중" : "미파지"}\n\n` +
         `[무전 교신 지침]\n` +
         (isRadioTurn
@@ -1550,6 +1737,7 @@
       if (score <= -20)  { triggerGameOver("훈련 점수가 -20점 이하로 하락하여 훈련이 강제 종료되었습니다."); return; }
       if (legalRate <= 30) { triggerGameOver("과잉 물리력 소지가 심각하게 식별되어 청문감사관실 직무집행 정지 명령이 하달되었습니다."); return; }
       if (kimTrust <= 20 && (!supportArrived || leeTrust <= 20)) { triggerGameOver("동료 신뢰 완전 붕괴로 현장 공조가 거부되어 상황 통제에 실패했습니다."); return; }
+      if (hasVictim && victimSafety <= 0) { triggerGameOver("피해자 보호 실패 — 보호 대상이 중대한 위해를 입어 초동조치가 실패로 종결되었습니다."); return; }
       if (turnCount > maxTurns) { await triggerFinalEvaluation("턴종료"); return; }
 
     } catch (e) {

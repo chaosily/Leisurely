@@ -169,6 +169,12 @@
     .eval-td-bad  { color: #fed7aa; }
     .eval-restart-row { text-align: center; padding-top: 8px; border-top: 1px dashed var(--border); }
 
+    /* ── 로딩 스피너 ── */
+    .loading-msg { display: flex; align-items: center; gap: 10px; }
+    .loading-spinner { width: 18px; height: 18px; border: 3px solid #374151; border-top-color: #60a5fa; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-sub { font-size: 11px; color: #6b7280; margin-top: 3px; }
+
     /* ── Mission Complete 배너 ── */
     .mission-complete-banner { text-align: center; padding: 26px 12px; margin: 10px 0; border: 2px solid #10b981; border-radius: 10px;
       background: linear-gradient(135deg, rgba(6,95,70,0.5) 0%, rgba(16,185,129,0.15) 100%); animation: mcPop 0.6s ease-out; }
@@ -279,11 +285,16 @@
         </select>
       </div>
       <div class="form-group">
+        <label>📋 교관 시나리오 (선택)</label>
+        <textarea id="custom-scenario" rows="2" placeholder="예: 홍대 앞 흉기난동, 취객이 편의점에서 난동 등 — 비우면 랜덤 생성" style="padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;width:100%;font-family:inherit;resize:none;"></textarea>
+      </div>
+      <div class="form-group">
         <label>🔑 Gemini API 키</label>
         <input type="text" id="gemini-key" placeholder="AQ.Ab8... 형식의 API 키 입력" autocomplete="off" />
       </div>
       <button id="login-btn" class="start-submit-btn">도상훈련 시작 (집행)</button>
       <button id="resume-btn" class="start-submit-btn" style="display:none;background:#065f46;">▶️ 이어하기 (저장된 훈련 계속)</button>
+      <div style="text-align:center;margin-top:14px;font-size:11px;color:#4b5563;letter-spacing:0.5px;">Built by Lakee in CBPA(JC)</div>
     </div>
   </div>
 
@@ -520,6 +531,9 @@
   let victimSafety = 100;       // 피해자 안전도 (0이면 보호 실패 게임오버)
   let hasVictim = false;        // 이번 시나리오에 보호 대상 존재 여부
   let victimIsFemale = false;   // 피해자 성별 (도트 표현)
+  let hasAccomplice = false;    // 공범 동행 여부 (2인조 사건)
+  let evidenceCount = 0;        // 확보한 증거 수 (수사 기초)
+  let customScenario = "";      // 교관 지정 시나리오
   let negotiation = 0;          // 협상 게이지 (100이면 투항)
   let surrendered = false;      // 협상 투항 상태
   let escapePhase = false;      // 도주 페이즈 진행 중
@@ -590,7 +604,7 @@
         player, score, controlRate, legalRate, turnCount, maxTurns, currentTotalSeconds,
         isArmorEquipped, pistolAmmo, taserCount, warningGiven,
         suspectType: suspectInfo?.type, suspectRevealed, suspectRevealTurn, suspectResist,
-        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, lastReportTurn,
+        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, hasAccomplice, evidenceCount, customScenario, lastReportTurn,
         currentLocation, selectedJurisdiction, userHp, userMental,
         kimMental, kimTrust, kimHp, leeMental, leeTrust, leeHp,
         supportRequested, supportArrivalTurn, supportArrived,
@@ -624,6 +638,7 @@
     suspectRevealed = snap.suspectRevealed; suspectRevealTurn = snap.suspectRevealTurn; suspectResist = snap.suspectResist;
     negotiation = snap.negotiation; surrendered = snap.surrendered; hasVictim = snap.hasVictim; victimSafety = snap.victimSafety;
     victimIsFemale = !!snap.victimIsFemale;
+    hasAccomplice = !!snap.hasAccomplice; evidenceCount = snap.evidenceCount || 0; customScenario = snap.customScenario || "";
     lastReportTurn = snap.lastReportTurn; currentLocation = snap.currentLocation; selectedJurisdiction = snap.selectedJurisdiction;
     userHp = snap.userHp; userMental = snap.userMental;
     kimMental = snap.kimMental; kimTrust = snap.kimTrust; kimHp = snap.kimHp;
@@ -677,7 +692,7 @@
       cctvFrame++;
       updatePixelArt(turnCount);
     }
-  }, 700);
+  }, 450);
 
   // 계급 서열 (지시 가능 여부 판단)
   const RANK_ORDER = ["순경", "경장", "경사", "경위", "경감", "경정", "총경"];
@@ -837,7 +852,7 @@
       }
       }
     }
-    return "상황실 무전망에 일시적인 오류가 발생했습니다. 콘솔(F12)에서 에러를 확인하세요.";
+    return null; // 모든 모델 실패 — 호출부에서 오프라인 폴백 처리
   }
 
   loginBtn.addEventListener("click", handleLogin);
@@ -861,6 +876,54 @@
     updateInputHints();
     chatInputEl.focus();
   };
+
+  // 오프라인 폴백: AI 실패 시 클라이언트 생성 턴 서사
+  function makeFallbackTurnReply(atk) {
+    let desc = "무전 신호가 어지럽게 끊긴다.\n\n나는 침착하게 현장 통제를 이어간다.";
+    if (atk && atk.attacked && atk.physicalHit) {
+      desc = `용의자가 ${atk.weaponName}을(를) 휘두르며 달려들었다.\n\n` +
+        (atk.fatal ? "치명적인 충격과 함께 시야가 급격히 흐려진다." : "몸에 통증이 번지지만 이를 악물고 자세를 다잡는다.");
+    } else if (atk && atk.attacked) {
+      desc = "용의자가 거친 욕설과 위협을 쏟아낸다.\n\n숨이 조여오는 심리적 압박이 밀려온다.";
+    }
+    return `💬 현장 대사 | 용의자: "다가오지 마!"\n📝 상황 묘사 | ${desc}\n🟢 점수 변동 | 변동 없음\n🎯 추천 선택지 |\n1. 상황실에 현재 상황을 무전 보고한다.\n2. 용의자에게 경고하며 안전거리를 유지한다.\n3. 강태구 경사와 대응 대형을 정비한다.`;
+  }
+
+  // 🔄 응답 재생성 버튼 (서사만 다시 생성, 수치 변동 없음)
+  function attachRegenButton(div) {
+    const b = document.createElement("button");
+    b.textContent = "🔄 다시 생성";
+    b.title = "이 응답의 서사만 다시 생성합니다 (점수·수치는 유지)";
+    b.style.cssText = "display:inline-block;margin-top:8px;background:#374151;border:1px solid #4b5563;color:#9ca3af;font-size:11px;padding:3px 10px;border-radius:4px;cursor:pointer;";
+    b.onclick = async () => {
+      if (!window._lastGen) return;
+      b.disabled = true; b.textContent = "⏳ 생성 중...";
+      const r = await fetchGeminiResponse(window._lastGen.userMsg, window._lastGen.prompt);
+      if (r) {
+        window._lastGen.div.remove();
+        const nd = formatAndAppendMessage(r, "ai");
+        window._lastGen.div = nd;
+        attachRegenButton(nd);
+      } else {
+        b.disabled = false; b.textContent = "🔄 다시 생성 (실패, 재시도)";
+      }
+    };
+    div.appendChild(b);
+  }
+
+  // 로딩 메시지 (스피너 포함)
+  function appendLoadingMessage(text, subText) {
+    const div = document.createElement("div");
+    div.className = "message ai loading-msg";
+    div.innerHTML =
+      `<div class="loading-spinner"></div>` +
+      `<div><div>${text}</div>` +
+      (subText ? `<div class="loading-sub">${subText}</div>` : "") +
+      `</div>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+    return div;
+  }
 
   // 시스템 노트 (채팅창 회색 안내)
   function appendSystemNote(text) {
@@ -1018,6 +1081,24 @@
     hasVictim = !!suspectInfo.hasVictim;
     victimSafety = hasVictim ? randInt(70, 90) : 100;
     victimIsFemale = (suspectInfo.type === "성범죄자형" || suspectInfo.type === "가정폭력형") ? Math.random() < 0.85 : Math.random() < 0.5;
+    hasAccomplice = Math.random() < 0.20;   // 20% 확률 2인조
+    if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
+    evidenceCount = 0;
+    const scenEl = document.getElementById("custom-scenario");
+    customScenario = scenEl ? scenEl.value.trim() : "";
+    if (customScenario) {
+      // 교관 시나리오 키워드로 용의자 유형 매칭
+      const kwMap = [
+        [/흉기|칼|난동/, "깡패형"], [/폭발|인질|협박/, "사이코형"], [/절도|사기|보이스피싱/, "교활형"],
+        [/성추행|성폭행|강간|몰카|스토킹/, "성범죄자형"], [/취객|음주|주취/, "음주폭력형"],
+        [/뺑소니|음주운전|차량|도주차/, "교통도주형"], [/가정폭력|아동|남편|아내/, "가정폭력형"]
+      ];
+      for (const [re, type] of kwMap) {
+        if (re.test(customScenario)) { suspectInfo = SUSPECT_POOL.find(p => p.type === type) || suspectInfo; break; }
+      }
+      hasVictim = !!suspectInfo.hasVictim;
+      victimSafety = hasVictim ? randInt(70, 90) : 100;
+    }
 
     kimMental = randInt(60, 90);
     kimTrust  = randInt(60, 90);
@@ -1066,7 +1147,7 @@
       }
     } catch (e) { /* localStorage 실패 무시 */ }
 
-    const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 생성 중 ]", "ai");
+    const loadingDiv = appendLoadingMessage("📡 112 신고 접수 중... 초동 출동 상황 생성 중", "잠시만 기다려주세요. 시간이 좀 걸립니다.");
 
     try {
       const lawCtx = await fetchLawContext(suspectInfo.lawKeyword || "경찰관 직무집행법");
@@ -1084,7 +1165,10 @@
         `- 범죄 유형: ${suspectInfo.crimeType}\n` +
         `- 용의자 성향: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `- 체포 지침: ${suspectInfo.arrestGuide}\n\n` +
-        `[중요] 상황은 반드시 최근 대한민국 사회에서 실제 뉴스로 보도된 사건을 재구성한 형식으로 작성하라.\n` +
+        (customScenario
+          ? `[교관 지정 시나리오 - 최우선] 다음 시나리오를 그대로 재구성하여 초동 출동 상황을 만들어라: "${customScenario}"\n`
+          : `[중요] 상황은 반드시 최근 대한민국 사회에서 실제 뉴스로 보도된 사건을 재구성한 형식으로 작성하라.\n`) +
+        (hasAccomplice ? `[공범] 용의자에게 공범 1명이 동행 중이다. 2인조 사건으로 구성하라.\n` : "") +
         `예: 홍대 길거리 흉기난동, 고속도로 음주 역주행, 도심 스토킹 피의자 추격, 지하철 성범죄 현행범, 아파트 층간소음 폭행, 편의점 강도 등 최근 이슈 사건 유형.\n` +
         `신고 경위(신고자 대사 또는 112 신고 내용)를 먼저 간략히 제시하고, 현장 도착 직후 상황을 사실적으로 묘사하라.\n` +
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이 빈 줄로 가독성을 확보하라.\n` +
@@ -1096,6 +1180,7 @@
 
       const startMsg = await fetchGeminiResponse(`${name} ${rank} 현장 도착. 상황 보고 바람.`, initPrompt);
       loadingDiv.remove();
+      if (!startMsg) throw new Error("AI 응답 없음");
       formatAndAppendMessage(startMsg, "ai");
     } catch (e) {
       loadingDiv.remove();
@@ -1233,21 +1318,22 @@
       ctx.fillRect(x + 1, y - 9, 1, 2);
       ctx.fillRect(x + 10, y - 9, 1, 2);
     }
-    // ── 다리 + 신발 ──
+    // ── 다리 + 신발 (걷기 스텝: opts.step이면 다리 벌림) ──
+    const lo = opts.step ? 1 : 0;
     if (opts.female) {
       ctx.fillStyle = "#e0b890";
-      ctx.fillRect(x + 3, y - 4, 2, 3);
-      ctx.fillRect(x + 7, y - 4, 2, 3);
+      ctx.fillRect(x + 3 - lo, y - 4, 2, 3);
+      ctx.fillRect(x + 7 + lo, y - 4, 2, 3);
       ctx.fillStyle = "#0a0a0f";
-      ctx.fillRect(x + 3, y - 1, 2, 1);
-      ctx.fillRect(x + 7, y - 1, 2, 1);
+      ctx.fillRect(x + 3 - lo, y - 1, 2, 1);
+      ctx.fillRect(x + 7 + lo, y - 1, 2, 1);
     } else {
       ctx.fillStyle = "#1c2433";
-      ctx.fillRect(x + 3, y - 7, 3, 6);
-      ctx.fillRect(x + 7, y - 7, 3, 6);
+      ctx.fillRect(x + 3 - lo, y - 7, 3, 6);
+      ctx.fillRect(x + 7 + lo, y - 7, 3, 6);
       ctx.fillStyle = "#0a0a0f";
-      ctx.fillRect(x + 2, y - 1, 4, 1);
-      ctx.fillRect(x + 7, y - 1, 4, 1);
+      ctx.fillRect(x + 2 - lo, y - 1, 4, 1);
+      ctx.fillRect(x + 7 + lo, y - 1, 4, 1);
     }
     // ── 무기 ──
     if (opts.weapon && opts.pose !== "handsup") {
@@ -1513,9 +1599,10 @@
     if (escapePhase) copLead = sx - 40;                    // 도주 추격 중
     copLead = Math.max(36, Math.min(copLead, sx - 20));
 
-    drawPerson(ctx, Math.floor(copLead), baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: dead });                      // 유저 (선두)
-    drawPerson(ctx, Math.floor(copLead) - 16, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: kimDown });              // 강태구
-    if (supportArrived) drawPerson(ctx, Math.floor(copLead) - 32, baseY, { body: "#4a7fd6", cap: "#152c5e", vest: true, lying: leeDown }); // 안정국
+    const bob = cctvFrame % 2;
+    drawPerson(ctx, Math.floor(copLead), baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: dead, step: bob === 0 });                      // 유저 (선두)
+    drawPerson(ctx, Math.floor(copLead) - 16, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: kimDown, step: bob === 1 });              // 강태구
+    if (supportArrived) drawPerson(ctx, Math.floor(copLead) - 32, baseY, { body: "#4a7fd6", cap: "#152c5e", vest: true, lying: leeDown, step: bob === 0 }); // 안정국
     const suspectBody = suspectRevealed
       ? ({ "깡패형": "#ef4444", "사이코형": "#c084fc", "교활형": "#f59e0b", "성범죄자형": "#fb923c", "음주폭력형": "#f87171", "교통도주형": "#9ca3af", "가정폭력형": "#dc2626" }[suspectInfo?.type] || "#ef4444")
       : "#b45050";
@@ -1523,16 +1610,38 @@
       ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[suspectInfo.armedWith])
       : null;
     const wob = cctvFrame % 2;                    // 미세 움직임 (초조한 흔들림)
+    const paceSeq = [0, 1, 2, 3, 2, 1];           // 왕복 페이싱 (초조하게 서성임)
+    const pace = surrendered ? 0 : paceSeq[cctvFrame % paceSeq.length];
     // 용의자 도주 차량 (교통도주형): 용의자 뒤쪽에 표시
     if (suspectInfo && suspectInfo.hasVehicle && !surrendered) {
       const carX = Math.min(W - 28, sx + 14);
       drawSuspectCar(ctx, carX, baseY, phase, escapePhase);
     }
     const suspectPose = surrendered ? "handsup" : (suspectAttackedLastTurn || pistolTension) ? "attack" : "normal";
-    drawPerson(ctx, sx + (surrendered ? 0 : wob), baseY, { body: suspectBody, weapon: weaponColor, hair: "#1c1410", pose: suspectPose });
+    drawPerson(ctx, sx + pace, baseY, { body: suspectBody, weapon: weaponColor, hair: "#1c1410", pose: suspectPose, step: wob === 1 && !surrendered });
+    // 공범 (공개 후 표시)
+    if (hasAccomplice && suspectRevealed) {
+      drawPerson(ctx, Math.min(W - 30, sx + 14) - pace, baseY, { body: "#7a3030", hair: "#241a12", pose: surrendered ? "handsup" : "normal", step: wob === 0 });
+    }
 
     // 피해자
-    if (hasVictim) drawPerson(ctx, Math.min(W - 16, sx + 22) - wob, baseY, { body: "#facc15", hair: victimIsFemale ? "#4a2c15" : "#3d2b1f", female: victimIsFemale, lying: victimSafety <= 40 });
+    if (hasVictim) drawPerson(ctx, Math.min(W - 16, sx + 22 + pace) - wob, baseY, { body: "#facc15", hair: victimIsFemale ? "#4a2c15" : "#3d2b1f", female: victimIsFemale, lying: victimSafety <= 40, step: wob === 0 });
+
+    // ── 배경 통행 (씬에 생동감) ──
+    if (scene === "city" || scene === "highway" || scene === "residential") {
+      const passX = ((cctvFrame * 7) % (W + 60)) - 30;
+      const passY = hy + 6;
+      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(passX, passY - 5, 16, 5);
+      ctx.fillStyle = phase === "night" ? "#2a3038" : "#5a6570";
+      ctx.fillRect(passX + 1, passY - 4, 14, 3);
+      ctx.fillStyle = "#8a99aa"; ctx.fillRect(passX + 4, passY - 5, 7, 1);
+      if (phase !== "day") { ctx.fillStyle = "#ffe9a8"; ctx.fillRect(passX + 14, passY - 3, 2, 1); }
+      ctx.fillStyle = "#0a0a0f"; ctx.fillRect(passX + 2, passY - 1, 3, 1); ctx.fillRect(passX + 11, passY - 1, 3, 1);
+    }
+    if (scene === "city" && phase !== "night") {
+      const pedX = W - (((cctvFrame * 4) % (W + 30)) - 15);
+      drawPerson(ctx, pedX, hy + 3, { body: "#6a7280", hair: "#3a3028", step: cctvFrame % 2 === 0 });
+    }
 
     // ── CCTV 오버레이 ──
     if (phase === "day") { ctx.fillStyle = "rgba(200,220,255,0.08)"; ctx.fillRect(0, 0, W, H); }
@@ -1743,6 +1852,9 @@
     hasVictim = !!suspectInfo.hasVictim;
     victimSafety = hasVictim ? randInt(70, 90) : 100;
     victimIsFemale = (suspectInfo.type === "성범죄자형" || suspectInfo.type === "가정폭력형") ? Math.random() < 0.85 : Math.random() < 0.5;
+    hasAccomplice = Math.random() < 0.20;
+    if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
+    evidenceCount = 0;
     const vRow = document.getElementById("victim-gauge-row");
     if (vRow) vRow.style.display = hasVictim ? "flex" : "none";
     lastReportTurn = 1;
@@ -1803,7 +1915,7 @@
         appendSystemNote(`📋 지난 훈련 개선 과제:\n${lastBad.slice(0, 3).map((b, i) => `${i + 1}. ${b}`).join("\n")}`);
       }
     } catch (e) {}
-    const loadingDiv = appendMessage("[ 112 신고 접수 중... 초동 출동 상황 재생성 중 ]", "ai");
+    const loadingDiv = appendLoadingMessage("📡 112 신고 접수 중... 초동 출동 상황 재생성 중", "잠시만 기다려주세요. 시간이 좀 걸립니다.");
     try {
       const lawCtx = await fetchLawContext(suspectInfo.lawKeyword || "경찰관 직무집행법");
       const initPrompt =
@@ -1816,6 +1928,7 @@
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 피훈련자는 1인칭 "나"로 지칭하라(3인칭 이름 표기 금지). 조문 번호·법령명·게임 수치(적법성 % 등)는 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;
       const startMsg = await fetchGeminiResponse(`${player.name} ${player.rank} 현장 도착.`, initPrompt);
       loadingDiv.remove();
+      if (!startMsg) throw new Error("AI 응답 없음");
       formatAndAppendMessage(startMsg, "ai");
     } catch (e) {
       loadingDiv.remove();
@@ -1951,7 +2064,8 @@
       `🟢 점수 변동 | (+N점)\n` +
       `한자 절대 사용 금지. 100% 한글.`;
 
-    const arrestReply = await fetchGeminiResponse("피의자 수갑 체포 집행", arrestPrompt);
+    let arrestReply = await fetchGeminiResponse("피의자 수갑 체포 집행", arrestPrompt);
+    if (!arrestReply) arrestReply = `💬 현장 대사 | 나: "당신을 현행범으로 체포합니다. 변호인을 선임할 권리가 있습니다."\n📝 상황 묘사 | 나는 용의자의 손목에 수갑을 채웠다.\n\n미란다 원칙을 고지하며 상황이 종결되었다.\n🟢 점수 변동 | +10점`;
     formatAndAppendMessage(arrestReply, "ai");
     // 체포 장면 잠깐 보여준 뒤 평가 페이지로
     setTimeout(() => triggerFinalEvaluation(arrestMode === "협상체포" ? "협상체포" : "체포완료"), 1200);
@@ -1970,7 +2084,7 @@
     };
 
     // 채팅창에 로딩 표시
-    const loadingMsg = appendMessage(`[ 훈련 종료: ${reasonMap[reason] || reason} | 법령 기반 AI 평가 생성 중... ]`, "ai");
+    const loadingMsg = appendLoadingMessage(`🎖 훈련 종료: ${reasonMap[reason] || reason}`, "법령 기반 AI 종합평가 생성 중 — 잠시만 기다려주세요. 시간이 좀 걸립니다.");
 
     const LAW_CONTEXT = `
 [경찰관 직무집행법 주요 조문 및 판례]
@@ -2008,6 +2122,8 @@
       `훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
       `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}% | 용의자 저항도: ${suspectResist}%${hasVictim ? ` | 피해자 안전도: ${victimSafety}%` : ""}\n` +
       (surrendered ? `※ 특기사항: 물리력 없이 협상·설득만으로 용의자를 투항시킴 (비례원칙의 모범 사례로 높이 평가하라)\n` : "") +
+      `확보 증거: ${evidenceCount}건 (증거 확보·목격자 진술 청취는 수사 기초 역량으로 평가에 반영하라. 0건이면 미흡한 점으로 지적)\n` +
+      (hasAccomplice ? `※ 공범 동행 2인조 사건이었음 (다수 대상 통제 역량 평가에 반영)\n` : "") +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
       `\n${LAW_CONTEXT}${ragCtx}\n${POLICE_MANUAL_CONTEXT}\n\n` +
@@ -2030,7 +2146,17 @@
       `평점 산정: 훈련점수(30)+통제도(20)+적법률(20)+체력/멘탈(15)+동료관계(15) → 100점 만점 환산.\n` +
       `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
-    const evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt, true);
+    let evalReply = await fetchGeminiResponse("최종 평가 요청", evalPrompt, true);
+    if (!evalReply) {
+      evalReply =
+        `📝 훈련 총평 | AI 평가 서버 연결에 실패하여 시스템 수치 기반 요약을 제공합니다. 통제도 ${controlRate}%, 적법률 ${legalRate}%, 체력 ${userHp}%로 훈련을 종료했습니다.\n` +
+        `🟢 잘한 점 | ${legalRate >= 70 ? "적법 절차를 준수하며 대응했습니다 [경직법 제10조의2]" : "훈련을 완주했습니다"}\n` +
+        (evidenceCount > 0 ? `🟢 잘한 점 | 증거 ${evidenceCount}건을 확보하여 수사 기초를 다졌습니다\n` : "") +
+        `🔴 미흡한 점 | ${controlRate < 50 ? "현장 통제도가 낮았습니다 — 조기 경고·장구 활용 검토 필요 [경직법 제10조의2]" : "세부 평가는 AI 연결 복구 후 다시 시도하십시오"}\n` +
+        (evidenceCount === 0 ? `🔴 미흡한 점 | 증거 확보·목격자 진술 청취가 없었습니다 (수사 기초 미흡)\n` : "") +
+        `🏆 종합 평점 | 0점 / 100점\n` +
+        `💬 소감 | 통신 장애로 약식 평가가 제공되었습니다. 수치 기반 자동 평점이 적용됩니다.`;
+    }
     loadingMsg.remove();
     window._pendingEvalReply = evalReply;
     window._pendingEvalReason = reasonMap[reason] || reason;
@@ -2173,6 +2299,7 @@
         <button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>
         <button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>
       </div>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:#4b5563;letter-spacing:0.5px;">Built by Lakee in CBPA(JC)</div>
     </div>`;
   };
 
@@ -2232,7 +2359,8 @@
     const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
     const tensionBonus = pistolTension ? 0.15 : 0;
     const nightBonus = timePhase === "night" ? 0.08 : 0;
-    if (Math.random() >= Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus) * df.atk)) return res;
+    const accompliceBonus = hasAccomplice ? 0.08 : 0;
+    if (Math.random() >= Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus + accompliceBonus) * df.atk)) return res;
     res.attacked = true;
     const m = suspectInfo.attackMode;
     if      (m === "physical") { res.ctrlLoss = randInt(8, 15); res.physicalHit = true; }
@@ -2306,6 +2434,18 @@
         playSfx("radio");
         ctrlDelta += 3; legalDelta += 5;
         if (preNoReport <= 2) { score += 5; scoreEl.textContent = score; notes.push("📡 조기 보고: 훈련점수 +5"); }
+        // 무전 보고 품질 평가 (육하원칙 요소 카운트)
+        const w5 = [
+          /\d+시|시각|현재|방금|지금|분경/,                              // 언제
+          /현장|위치|앞|골목|도로|역|공원|해변|주변|인근|번지/,           // 어디서
+          /용의자|피의자|남성|여성|남자|여자|명/,                          // 누가
+          /흉기|칼|총|둔기|폭행|난동|협박|도주|취객|사고/,                 // 무엇을
+          /지원|요청|필요|추가|출동|구급|앰뷸런스|보고/                    // 조치/요청
+        ];
+        const quality = w5.filter(r => r.test(text)).length;
+        legalDelta += quality;
+        notes.push(`📡 보고 품질: ${quality}/5 요소 (적법률 +${quality})`);
+        if (quality >= 4) { score += 5; scoreEl.textContent = score; notes.push("📡 모범 보고 (육하원칙 충실): 훈련점수 +5"); }
       } else if (/(강태구|안정국)/.test(text) && /(테이저|삼단봉|권총|제압|검거|체포|진압)/.test(text)) {
         // 동료에게 장구/제압 지시 — 계급 서열 확인
         const targetLee = /안정국/.test(text) && supportArrived;
@@ -2382,6 +2522,14 @@
         playSfx("hit");
         if (navigator.vibrate) { try { navigator.vibrate(180); } catch (e) {} }
       }
+    }
+
+    // 증거 수집 (수사 기초)
+    if (evidenceCount < 3 && /증거|채증|목격자|진술|블랙박스|시시티비|폐쇄회로|촬영|사진|확보/.test(text) && /(확보|수집|청취|요청|기록|촬영|채증)/.test(text)) {
+      evidenceCount++;
+      score += 3; scoreEl.textContent = score;
+      legalDelta += 2;
+      notes.push(`🔍 증거 확보 (${evidenceCount}/3): 훈련점수 +3, 적법률↑`);
     }
 
     // 피해자 안전 변화
@@ -2472,7 +2620,7 @@
 
     sendChatBtn.disabled = true;
     sendActionBtn.disabled = true;
-    const loadingDiv = appendMessage("종합 치안 상황 분석 중...", "ai");
+    const loadingDiv = appendLoadingMessage("종합 치안 상황 분석 중...");
 
     currentTotalSeconds += randInt(70, 120);
     formatElapsedTime();
@@ -2524,7 +2672,8 @@
       // 용의자 공개 여부 판단
       if (!suspectRevealed && turnCount >= suspectRevealTurn) {
         suspectRevealed = true;
-        suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]`;
+        suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]${hasAccomplice ? " +공범 1" : ""}`;
+        if (hasAccomplice) appendSystemNote("⚠️ 공범 1명 확인! 2인조 사건입니다 — 다수 통제에 유의하십시오 (공격 확률↑)");
       }
       const suspectInfoStr = suspectRevealed
         ? `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n체포 방식 지침: ${suspectInfo.arrestGuide}\n공격 성향: ${suspectInfo.attackMode}`
@@ -2575,7 +2724,7 @@
         `- 📝 상황 묘사에는 유저 발언이 현장에 미친 효과와 상대의 행동 변화를 서술하라.\n` +
         `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 진행: ${turnCount}/${maxTurns}턴\n` +
         `현장 위치: [${selectedJurisdiction} ${currentLocation}] | 시간대: ${getTimePhase() === "night" ? "야간(어두움·시야제한)" : getTimePhase() === "dusk" ? "일몰 무렵" : "주간(시민 목격자 다수)"}\n\n` +
-        `[용의자 정보]\n${suspectInfoStr}\n\n` +
+        `[용의자 정보]\n${suspectInfoStr}${hasAccomplice && suspectRevealed ? "\n※ 공범 1명 동행 중 (2인조) — 공범의 움직임도 상황 묘사에 포함하라." : ""}\n\n` +
         `[용의자 공격 지침]\n${attackInstruction}\n` +
         `[현재 동료 상태 및 지휘 관계]\n` +
         `유저 계급: ${player.rank} | 강태구: 경사 | 안정국: 경장\n` +
@@ -2629,6 +2778,8 @@
         `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
       let aiReply = await fetchGeminiResponse(text, systemPrompt);
+      let offlineMode = false;
+      if (!aiReply) { aiReply = makeFallbackTurnReply(attackRoll); offlineMode = true; }
 
       if (supportArrivalMsg) aiReply = supportArrivalMsg + "\n\n" + aiReply;
 
@@ -2653,7 +2804,13 @@
       const uMen = aiReply.match(/유저\s*멘탈([-+]\d+)/); if (uMen) userMental = Math.max(0, Math.min(100, userMental + parseInt(uMen[1], 10)));
 
       loadingDiv.remove();
-      formatAndAppendMessage(aiReply, "ai");
+      const aiDiv = formatAndAppendMessage(aiReply, "ai");
+      if (offlineMode) {
+        appendSystemNote("⚠️ AI 연결 불안정 — 오프라인 모드로 턴을 진행했습니다 (수치 계산은 정상 반영)");
+      } else {
+        window._lastGen = { userMsg: text, prompt: systemPrompt, div: aiDiv };
+        attachRegenButton(aiDiv);
+      }
 
       scoreEl.textContent = score;
       turnCount++;
@@ -2814,6 +2971,7 @@
     if (div.children.length === 0) div.textContent = rawText;
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
+    return div;
   }
 
   function appendMessage(text, classes) {

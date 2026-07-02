@@ -801,7 +801,7 @@
   };
 
   function getCurrentDateInfo() {
-    const now = new Date();
+    const now = new Date(gameClockMs || Date.now()); // 게임 내 출동 시각 기준
     const y = now.getFullYear();
     const mo = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
@@ -1103,9 +1103,9 @@
     kimMental = randInt(60, 90);
     kimTrust  = randInt(60, 90);
 
-    const dtInfo = getCurrentDateInfo();
     currentTotalSeconds = 0;
     gameClockMs = randomDispatchMs();
+    const dtInfo = getCurrentDateInfo();
 
     document.getElementById("dispatch-case-num").textContent = dtInfo.caseNum;
     document.getElementById("dispatch-date").textContent = dtInfo.date;
@@ -1162,6 +1162,7 @@
         `- 피훈련자: ${name} ${rank}\n` +
         `- 동행 동료: 강태구 경사\n` +
         `- 현장: ${selectedJurisdiction} ${currentLocation}\n` +
+        `- 출동 시각: ${formatGameClock()} (${getTimePhase() === "night" ? "야간 - 어둡고 시야 제한" : getTimePhase() === "dusk" ? "일몰 무렵 - 노을이 지는 시간" : "주간 - 환한 대낮, 시민 통행 많음"})\n` +
         `- 범죄 유형: ${suspectInfo.crimeType}\n` +
         `- 용의자 성향: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `- 체포 지침: ${suspectInfo.arrestGuide}\n\n` +
@@ -1171,6 +1172,7 @@
         (hasAccomplice ? `[공범] 용의자에게 공범 1명이 동행 중이다. 2인조 사건으로 구성하라.\n` : "") +
         `예: 홍대 길거리 흉기난동, 고속도로 음주 역주행, 도심 스토킹 피의자 추격, 지하철 성범죄 현행범, 아파트 층간소음 폭행, 편의점 강도 등 최근 이슈 사건 유형.\n` +
         `신고 경위(신고자 대사 또는 112 신고 내용)를 먼저 간략히 제시하고, 현장 도착 직후 상황을 사실적으로 묘사하라.\n` +
+        `[중요] 위 출동 시각의 시간대(주간/일몰/야간)를 반드시 준수하라. 주간이면 밝은 대낮 분위기로, 야간이면 어두운 분위기로 묘사하고 시간대를 임의로 바꾸지 마라.\n` +
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이 빈 줄로 가독성을 확보하라.\n` +
         `피훈련자는 반드시 1인칭 "나"로 지칭하라. 유저가 직접 주인공이 된 시점으로 묘사하라. 3인칭 이름 표기 금지.\n` +
         `게임 내부 수치(적법성 %, 통제도 % 등)는 본문에 절대 표기하지 말고 서사로만 표현하라.\n` +
@@ -1907,6 +1909,7 @@
         `출력 포맷:\n💬 현장 대사 | (용의자 또는 신고자 대사)\n📝 상황 묘사 | (초동 출동 현장 상황)\n🎯 추천 선택지 |\n1. 옵션A\n2. 옵션B\n3. 옵션C\n\n` +
         `너는 대한민국 경찰 112 초동출동 훈련 시뮬레이터다.\n` +
         `피훈련자: ${player.name} ${player.rank} | 동행: 강태구 경사 | 현장: ${selectedJurisdiction} ${currentLocation}\n` +
+        `출동 시각: ${formatGameClock()} (${getTimePhase() === "night" ? "야간" : getTimePhase() === "dusk" ? "일몰 무렵" : "주간 - 환한 대낮"}) — 시간대에 맞는 조명·분위기로 묘사하라.\n` +
         `범죄 유형: ${suspectInfo.crimeType} | 용의자: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `[중요] 최근 대한민국 뉴스에서 보도된 실제 사건을 재구성한 형식으로 상황을 작성하라.\n` +
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 피훈련자는 1인칭 "나"로 지칭하라(3인칭 이름 표기 금지). 조문 번호·법령명·게임 수치(적법성 % 등)는 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;

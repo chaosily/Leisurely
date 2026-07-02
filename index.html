@@ -1627,22 +1627,6 @@
     // 피해자
     if (hasVictim) drawPerson(ctx, Math.min(W - 16, sx + 22 + pace) - wob, baseY, { body: "#facc15", hair: victimIsFemale ? "#4a2c15" : "#3d2b1f", female: victimIsFemale, lying: victimSafety <= 40, step: wob === 0 });
 
-    // ── 배경 통행 (씬에 생동감) ──
-    if (scene === "city" || scene === "highway" || scene === "residential") {
-      const passX = ((cctvFrame * 7) % (W + 60)) - 30;
-      const passY = hy + 6;
-      ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(passX, passY - 5, 16, 5);
-      ctx.fillStyle = phase === "night" ? "#2a3038" : "#5a6570";
-      ctx.fillRect(passX + 1, passY - 4, 14, 3);
-      ctx.fillStyle = "#8a99aa"; ctx.fillRect(passX + 4, passY - 5, 7, 1);
-      if (phase !== "day") { ctx.fillStyle = "#ffe9a8"; ctx.fillRect(passX + 14, passY - 3, 2, 1); }
-      ctx.fillStyle = "#0a0a0f"; ctx.fillRect(passX + 2, passY - 1, 3, 1); ctx.fillRect(passX + 11, passY - 1, 3, 1);
-    }
-    if (scene === "city" && phase !== "night") {
-      const pedX = W - (((cctvFrame * 4) % (W + 30)) - 15);
-      drawPerson(ctx, pedX, hy + 3, { body: "#6a7280", hair: "#3a3028", step: cctvFrame % 2 === 0 });
-    }
-
     // ── CCTV 오버레이 ──
     if (phase === "day") { ctx.fillStyle = "rgba(200,220,255,0.08)"; ctx.fillRect(0, 0, W, H); }
     for (let y = 0; y < H; y += 3) { ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(0, y, W, 1); }

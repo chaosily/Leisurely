@@ -509,6 +509,7 @@
   let colleagueCrisisDone = false; // 위기 이벤트 1회 제한
   let rescueLockTurns = 0;      // 구출 선택 시 체포 불가 턴 수
   let kimDown = false, leeDown = false; // 동료 쓰러짐 (CCTV 표시)
+  let gameClockMs = 0;          // 게임 내 시각 (턴당 8~15분 경과)
   const DIFF_FACTOR = { "초급": { atk: 0.75, fatal: 0.5 }, "중급": { atk: 1.0, fatal: 1.0 }, "상급": { atk: 1.2, fatal: 1.5 } };
   let suspectInfo = null;
   let suspectRevealed = false;  // 용의자 특성 공개 여부
@@ -572,6 +573,7 @@
         kimMental, kimTrust, kimHp, leeMental, leeTrust, leeHp,
         supportRequested, supportArrivalTurn, supportArrived,
         difficulty, turnLog, colleagueCrisisDone, kimDown, leeDown, rescueLockTurns, chaseBonusNextTurn,
+        gameClockMs,
         caseNum: document.getElementById("dispatch-case-num").textContent,
         dDate: document.getElementById("dispatch-date").textContent,
         dTime: document.getElementById("dispatch-time").textContent,
@@ -607,6 +609,7 @@
     difficulty = snap.difficulty || "중급"; turnLog = snap.turnLog || [];
     colleagueCrisisDone = snap.colleagueCrisisDone; kimDown = snap.kimDown; leeDown = snap.leeDown;
     rescueLockTurns = snap.rescueLockTurns || 0; chaseBonusNextTurn = snap.chaseBonusNextTurn;
+    gameClockMs = snap.gameClockMs || Date.now();
     currentHoldingWeapon = ""; isBatonActive = false; isCuffsActive = false;
 
     // UI 복원
@@ -615,7 +618,7 @@
     playerInfoEl.textContent = `${player.rank} ${player.name}`;
     document.getElementById("dispatch-case-num").textContent = snap.caseNum;
     document.getElementById("dispatch-date").textContent = snap.dDate;
-    document.getElementById("dispatch-time").textContent = snap.dTime;
+    document.getElementById("dispatch-time").textContent = formatGameClock();
     document.getElementById("dispatch-location").textContent = currentLocation;
     suspectTypeEl.textContent = suspectRevealed ? `[${suspectInfo.type} - ${suspectInfo.desc}]` : "[??? - 용의자 정보 수집 중]";
     stageEl.textContent = `${turnCount} / ${maxTurns} 턴`;
@@ -645,10 +648,14 @@
     } catch (e) {}
   })();
 
-  // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외)
+  // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외) — 게임 내 시계 기준 (턴당 8~15분 경과)
   function getTimePhase() {
-    const hour = new Date().getHours();
+    const hour = new Date(gameClockMs || Date.now()).getHours();
     return (hour >= 6 && hour < 16) ? "day" : (hour >= 16 && hour < 19) ? "dusk" : "night";
+  }
+  function formatGameClock() {
+    const d = new Date(gameClockMs || Date.now());
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }
 
   // ── Web Audio 효과음 (파일 불필요) ─────────────────────────────
@@ -949,6 +956,7 @@
 
     const dtInfo = getCurrentDateInfo();
     currentTotalSeconds = 0;
+    gameClockMs = Date.now();
 
     document.getElementById("dispatch-case-num").textContent = dtInfo.caseNum;
     document.getElementById("dispatch-date").textContent = dtInfo.date;
@@ -1013,6 +1021,7 @@
         `신고 경위(신고자 대사 또는 112 신고 내용)를 먼저 간략히 제시하고, 현장 도착 직후 상황을 사실적으로 묘사하라.\n` +
         `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이 빈 줄로 가독성을 확보하라.\n` +
         `피훈련자는 반드시 1인칭 "나"로 지칭하라. 유저가 직접 주인공이 된 시점으로 묘사하라. 3인칭 이름 표기 금지.\n` +
+        `게임 내부 수치(적법성 %, 통제도 % 등)는 본문에 절대 표기하지 말고 서사로만 표현하라.\n` +
         `법령 검토는 상황 구성에 활용하되, 조문 번호나 법령명을 본문에 직접 표기하지 마라.\n` +
         `선택지 3개는 현 상황에서 취할 수 있는 현실적 경찰 조치여야 한다.\n` +
         `한자 절대 사용 금지. 100% 한글로만 출력.${lawCtx}`;
@@ -1196,7 +1205,7 @@
     // 타임스탬프
     const ts = document.getElementById("cctv-timestamp");
     if (ts) {
-      const now = new Date();
+      const now = new Date(gameClockMs || Date.now());
       const pad = n => String(n).padStart(2, "0");
       ts.textContent = `CAM-03 ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} T${stageNum}`;
     }
@@ -1376,6 +1385,7 @@
     negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
     colleagueCrisis = false; colleagueCrisisDone = false; rescueLockTurns = 0; kimDown = false; leeDown = false;
     clearGameSnapshot();
+    gameClockMs = Date.now();
     userHp = 100; userMental = 100;
     document.body.classList.remove("death-mode");
     kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;
@@ -1424,6 +1434,7 @@
     const locations = JURISDICTION_MAP[selectedJurisdiction];
     currentLocation = locations[randInt(0, locations.length - 1)];
     document.getElementById("dispatch-location").textContent = currentLocation;
+    document.getElementById("dispatch-time").textContent = formatGameClock();
 
     updateStatusBars(); updatePixelArt(1);
     handleLogin._restart();
@@ -1455,7 +1466,7 @@
         `피훈련자: ${player.name} ${player.rank} | 동행: 강태구 경사 | 현장: ${selectedJurisdiction} ${currentLocation}\n` +
         `범죄 유형: ${suspectInfo.crimeType} | 용의자: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
         `[중요] 최근 대한민국 뉴스에서 보도된 실제 사건을 재구성한 형식으로 상황을 작성하라.\n` +
-        `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 피훈련자는 1인칭 "나"로 지칭하라(3인칭 이름 표기 금지). 조문 번호나 법령명은 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;
+        `상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 피훈련자는 1인칭 "나"로 지칭하라(3인칭 이름 표기 금지). 조문 번호·법령명·게임 수치(적법성 % 등)는 본문에 직접 표기하지 마라. 한자 절대 사용 금지.${lawCtx}`;
       const startMsg = await fetchGeminiResponse(`${player.name} ${player.rank} 현장 도착.`, initPrompt);
       loadingDiv.remove();
       formatAndAppendMessage(startMsg, "ai");
@@ -2104,6 +2115,15 @@
 
     currentTotalSeconds += randInt(70, 120);
     formatElapsedTime();
+    const prevPhase = getTimePhase();
+    gameClockMs += randInt(8, 15) * 60000; // 게임 내 8~15분 경과
+    document.getElementById("dispatch-time").textContent = formatGameClock();
+    const newPhase = getTimePhase();
+    if (prevPhase !== newPhase) {
+      appendSystemNote(newPhase === "night" ? "🌃 날이 완전히 저물었습니다 — 야간 시야 페널티 적용 (공격 확률↑)"
+        : newPhase === "dusk" ? "🌆 해가 지기 시작합니다 — 어두워지기 전에 상황을 종결하십시오"
+        : "🌅 날이 밝았습니다 — 시민 목격자 증가 (과잉 물리력 감점 가중)");
+    }
 
     // Check if support arrives this turn
     let supportArrivalMsg = "";
@@ -2220,6 +2240,7 @@
         `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 예규 위반(단독 진입, 미란다 미고지, 과잉 물리력) 시 감점 가중. 극히 인색하게 채점.\n\n` +
         `[문체 지침]\n` +
         `- 상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이에 빈 줄을 넣어 가독성을 확보하라.\n` +
+        `- 💬 현장 대사와 📝 상황 묘사에 게임 내부 수치(적법성 00%, 통제도 00%, 저항도, 체력 수치 등)를 절대 직접 표기하지 마라. 수치 대신 서사로 표현하라. 예: "적법률 60%" (금지) → "시민들의 시선이 따가워지고 있다" (허용), "통제도 상승" (금지) → "용의자가 주춤하며 물러섰다" (허용).\n` +
         `- 피훈련자(${player.name} ${player.rank})는 반드시 1인칭 "나"로 지칭하라. "나는 삼단봉을 고쳐 쥐었다"처럼 유저가 직접 주인공이 된 시점으로 묘사하라. "${player.name} ${player.rank}은(는)" 같은 3인칭 표기 금지.\n` +
         `- 법령 검토 결과는 상황 판단에 활용하되, 조문 번호나 법령명을 본문에 직접 표기하지 마라.\n\n` +
         `[출력 포맷 - 반드시 준수]\n` +

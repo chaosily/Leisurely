@@ -2246,7 +2246,6 @@
     }
 
     try {
-      const lawContext = await fetchLawContext(text);
       const kimIgnore = shouldIgnore(kimTrust);
       const kimFreeze = shouldFreeze(kimMental);
       const leeIgnore = supportArrived && shouldIgnore(leeTrust);
@@ -2333,8 +2332,7 @@
         `- 통제도 ${controlRate}% ≤50이면 서장 경고 🚨 포함 (무전보고 턴 제외)\n` +
         `- 적법률 ${legalRate}% ≤60이면 시민 카메라 📢 포함\n` +
         `- 삼단봉 활성 시 물리적 제압 효과 크게 묘사\n\n` +
-        `[경찰청 예규 준수 기준 - 상황 판정에 반영]\n` +
-        `물리력은 대상자 행위 수준보다 한 단계 높은 수준까지만 적법. 흉기 대치 시 3m 안전거리. 2인 1조 원칙. 체포 시 미란다 고지 필요. 코드0 사건은 수시 상황실 보고 의무.\n\n` +
+        `[예규 판정 기준] 물리력은 대상자 행위보다 한 단계 위까지만 적법·흉기 3m 거리·2인 1조·미란다 고지·수시 보고.\n\n` +
         `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 예규 위반(단독 진입, 미란다 미고지, 과잉 물리력) 시 감점 가중. 극히 인색하게 채점.\n\n` +
         `[문체 지침]\n` +
         `- 상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이에 빈 줄을 넣어 가독성을 확보하라.\n` +
@@ -2351,7 +2349,7 @@
         `🚨 무전 교신 | (조건 해당 시)\n` +
         `📢 시민 상황 | (조건 해당 시)\n` +
         `🎯 추천 선택지 |\n1. (옵션A)\n2. (옵션B)\n3. (옵션C)\n\n` +
-        `한자 절대 사용 금지. 100% 한글로만 출력.${lawContext}`;
+        `한자 절대 사용 금지. 100% 한글로만 출력.`;
 
       let aiReply = await fetchGeminiResponse(text, systemPrompt);
 

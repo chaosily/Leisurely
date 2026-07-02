@@ -752,14 +752,17 @@
     const MODELS = highQuality
       ? ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]
       : ["gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash-8b"];
-    const maxTokens = highQuality ? 8192 : 4096;
-    const body = JSON.stringify({
-      system_instruction: { parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: userMessage }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens }
-    });
+    const maxTokens = 8192;
     for (const model of MODELS) {
       try {
+        // 2.5 계열: thinking 토큰이 출력 예산을 잠식해 본문이 잘리는 문제 방지
+        const genCfg = { temperature: 0.7, maxOutputTokens: maxTokens };
+        if (model.startsWith("gemini-2.5")) genCfg.thinkingConfig = { thinkingBudget: 0 };
+        const body = JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userMessage }] }],
+          generationConfig: genCfg
+        });
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
         const response = await fetch(url, {
           method: "POST",
@@ -768,6 +771,9 @@
         });
         const data = await response.json();
         if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          if (data.candidates[0].finishReason === "MAX_TOKENS") {
+            console.warn(`[Gemini ${model}] 출력이 토큰 상한(${maxTokens})에서 잘렸습니다.`);
+          }
           return data.candidates[0].content.parts[0].text;
         }
         console.error(`[Gemini ${model}] HTTP ${response.status}:`, JSON.stringify(data));
@@ -1751,7 +1757,8 @@
       `- 잘한 점·미흡한 점 각 항목마다 적절한 조문을 인용하고, 각각 최소 1개 이상의 판례를 포함하라.\n` +
       `- 경찰청 예규·매뉴얼(물리력 행사 기준 5단계, 112 보고 의무, 2인 1조, 미란다 고지, 흉기 대응 안전거리 등) 준수 여부를 반드시 검토하여 인용하라.\n` +
       `  예: (대법원 2016도19417), (대법원 2015다248342), (헌재 2002헌마51) 등 위 판례에서 직접 인용.\n` +
-      `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가. 수치가 낮으면 그 원인을 법령 기준으로 분석하라.\n\n` +
+      `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가. 수치가 낮으면 그 원인을 법령 기준으로 분석하라.\n` +
+      `- 각 항목은 2~3문장 이내로 간결하게 작성하여 응답이 잘리지 않게 완결하라.\n\n` +
       `출력 포맷 (반드시 이 순서로, 이모지 접두사 포함):\n` +
       `📝 훈련 총평 | (3~5줄 서술형. 종료 사유와 현장 수치를 종합)\n` +
       `🟢 잘한 점 | 항목1 [법령 인용]\n🟢 잘한 점 | 항목2 [법령 인용]\n🟢 잘한 점 | 항목3 [법령 인용]\n` +
@@ -2332,6 +2339,7 @@
         `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 예규 위반(단독 진입, 미란다 미고지, 과잉 물리력) 시 감점 가중. 극히 인색하게 채점.\n\n` +
         `[문체 지침]\n` +
         `- 상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이에 빈 줄을 넣어 가독성을 확보하라.\n` +
+        `- 분량 상한: 📝 상황 묘사는 4~8문장, 💬 현장 대사는 3줄 이내. 응답이 중간에 잘리지 않도록 간결하게 완결하라.\n` +
         `- 💬 현장 대사와 📝 상황 묘사에 게임 내부 수치(적법성 00%, 통제도 00%, 저항도, 체력 수치 등)를 절대 직접 표기하지 마라. 수치 대신 서사로 표현하라. 예: "적법률 60%" (금지) → "시민들의 시선이 따가워지고 있다" (허용), "통제도 상승" (금지) → "용의자가 주춤하며 물러섰다" (허용).\n` +
         `- 피훈련자(${player.name} ${player.rank})는 반드시 1인칭 "나"로 지칭하라. "나는 삼단봉을 고쳐 쥐었다"처럼 유저가 직접 주인공이 된 시점으로 묘사하라. "${player.name} ${player.rank}은(는)" 같은 3인칭 표기 금지.\n` +
         `- 법령 검토 결과는 상황 판단에 활용하되, 조문 번호나 법령명을 본문에 직접 표기하지 마라.\n\n` +

@@ -285,6 +285,12 @@
         </select>
       </div>
       <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="shift-mode" style="width:16px;height:16px;accent-color:#7c2d12;" />
+          🌙 연속 근무 모드 (사건 2건 연속 — 체력·탄약 이월, 회복 없음)
+        </label>
+      </div>
+      <div class="form-group">
         <label>📋 교관 시나리오 (선택)</label>
         <textarea id="custom-scenario" rows="2" placeholder="예: 홍대 앞 흉기난동, 취객이 편의점에서 난동 등 — 비우면 랜덤 생성" style="padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--input-bg);color:var(--text);font-size:14px;width:100%;font-family:inherit;resize:none;"></textarea>
       </div>
@@ -294,7 +300,8 @@
       </div>
       <button id="login-btn" class="start-submit-btn">도상훈련 시작 (집행)</button>
       <button id="resume-btn" class="start-submit-btn" style="display:none;background:#065f46;">▶️ 이어하기 (저장된 훈련 계속)</button>
-      <div style="text-align:center;margin-top:14px;font-size:11px;color:#4b5563;letter-spacing:0.5px;">Built by Lakee in CBPA(JC)</div>
+      <div id="login-badges" style="text-align:center;margin-top:12px;"></div>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:#4b5563;letter-spacing:0.5px;">Built by Lakee in CBPA(JC)</div>
     </div>
   </div>
 
@@ -377,7 +384,7 @@
     <!-- ③ 장구류 패널 (접이식) -->
     <div class="collapsible-panel" id="panel-inventory" style="background:#111c30;border-style:dashed;border-color:var(--primary);">
       <div class="collapsible-header" onclick="togglePanel('panel-inventory')" style="color:var(--primary);">
-        <span>■ 장구류 파지 패널 <button onclick="event.stopPropagation();document.getElementById('force-modal').classList.add('open')" style="background:#374151;border:1px solid #4b5563;color:#fbbf24;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:8px;">📊 물리력 기준</button></span>
+        <span>■ 장구류 파지 패널 <button onclick="event.stopPropagation();document.getElementById('force-modal').classList.add('open')" style="background:#374151;border:1px solid #4b5563;color:#fbbf24;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:8px;">📊 물리력 기준</button><button id="tts-toggle" onclick="event.stopPropagation();toggleTts(this)" style="background:#374151;border:1px solid #4b5563;color:#9ca3af;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:6px;">🔇 음성 OFF</button></span>
         <span class="collapsible-arrow" style="color:var(--primary);">▼</span>
       </div>
       <div class="collapsible-body" style="padding-top:8px;">
@@ -421,6 +428,20 @@
 
   <div id="eval-zone"></div>
   <div id="death-vignette"></div>
+
+  <div id="tutorial-modal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;padding:16px;" onclick="if(event.target===this)closeTutorial()">
+    <div style="background:var(--card);border:1px solid #60a5fa;border-radius:10px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:20px;">
+      <h3 style="color:#60a5fa;font-size:15px;margin-bottom:12px;">🎓 도상훈련 조작 가이드</h3>
+      <div style="font-size:13px;line-height:1.9;color:#d1d5db;">
+        <p><b style="color:#fbbf24;">① 상태 게이지</b> — ❤️체력·🧠멘탈은 내 상태, 🚨통제도는 현장 장악력, ⚖️적법률은 법적 정당성, 💢저항도가 낮아지면 수갑 체포 적기, 🕊️협상 100이면 무혈 투항.</p>
+        <p><b style="color:#fbbf24;">② 입력 3모드</b> — 🗣️대화(설득·동료지시), 📡무전(상황실 보고: 육하원칙 충실할수록 가점, 미보고 지속 시 감점), 🛡️조치(전술 행동).</p>
+        <p><b style="color:#fbbf24;">③ 장구 사용</b> — 조치 문장에 장구명을 쓰면 자동 사용: "테이저건으로 제압", "공포탄 경고사격", "수갑 채워 체포". 권총은 경고→공포탄→실탄 순서가 원칙. 방검복은 클릭 착용.</p>
+        <p><b style="color:#fbbf24;">④ 승리 조건</b> — 저항도를 낮춰 수갑 체포, 또는 협상 게이지 100으로 투항 유도. 증거 확보·목격자 진술도 평가에 반영됩니다.</p>
+        <p><b style="color:#fbbf24;">⑤ 주의</b> — 무장 용의자에게 성급히 접근하면 피격당합니다. 경고·거리 유지·지원 요청이 생존의 기본. 📊 물리력 기준 버튼을 참고하세요.</p>
+      </div>
+      <button onclick="closeTutorial()" style="display:block;margin:16px auto 0;background:var(--primary);border:none;color:#fff;padding:10px 28px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:bold;">훈련 시작</button>
+    </div>
+  </div>
 
   <div id="force-modal" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="force-modal-box">
@@ -535,6 +556,9 @@
   let hasAccomplice = false;    // 공범 동행 여부 (2인조 사건)
   let evidenceCount = 0;        // 확보한 증거 수 (수사 기초)
   let customScenario = "";      // 교관 지정 시나리오
+  let perfectReports = 0;       // 모범 보고(육하원칙 4+) 횟수 (배지용)
+  let shiftMode = false;        // 연속 근무 모드 (사건 2건 연속)
+  let shiftCase = 1;            // 현재 사건 번호
   let negotiation = 0;          // 협상 게이지 (100이면 투항)
   let surrendered = false;      // 협상 투항 상태
   let escapePhase = false;      // 도주 페이즈 진행 중
@@ -605,7 +629,7 @@
         player, score, controlRate, legalRate, turnCount, maxTurns, currentTotalSeconds,
         isArmorEquipped, pistolAmmo, taserCount, warningGiven,
         suspectType: suspectInfo?.type, suspectRevealed, suspectRevealTurn, suspectResist,
-        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, hasAccomplice, evidenceCount, customScenario, lastReportTurn,
+        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, hasAccomplice, evidenceCount, customScenario, shiftMode, shiftCase, perfectReports, lastReportTurn,
         currentLocation, selectedJurisdiction, userHp, userMental,
         kimMental, kimTrust, kimHp, leeMental, leeTrust, leeHp,
         supportRequested, supportArrivalTurn, supportArrived,
@@ -640,6 +664,7 @@
     negotiation = snap.negotiation; surrendered = snap.surrendered; hasVictim = snap.hasVictim; victimSafety = snap.victimSafety;
     victimIsFemale = !!snap.victimIsFemale;
     hasAccomplice = !!snap.hasAccomplice; evidenceCount = snap.evidenceCount || 0; customScenario = snap.customScenario || "";
+    shiftMode = !!snap.shiftMode; shiftCase = snap.shiftCase || 1; perfectReports = snap.perfectReports || 0;
     lastReportTurn = snap.lastReportTurn; currentLocation = snap.currentLocation; selectedJurisdiction = snap.selectedJurisdiction;
     userHp = snap.userHp; userMental = snap.userMental;
     kimMental = snap.kimMental; kimTrust = snap.kimTrust; kimHp = snap.kimHp;
@@ -877,6 +902,78 @@
     updateInputHints();
   };
 
+  // ── 튜토리얼 (첫 실행 시 1회) ──────────────────────────────────
+  window.closeTutorial = function() {
+    document.getElementById("tutorial-modal").style.display = "none";
+    try { localStorage.setItem("tutorialSeen", "1"); } catch (e) {}
+  };
+  function maybeShowTutorial() {
+    try { if (localStorage.getItem("tutorialSeen")) return; } catch (e) {}
+    document.getElementById("tutorial-modal").style.display = "flex";
+  }
+
+  // ── TTS: 현장 대사 음성 재생 (Web Speech API, 무료) ──────────────
+  let ttsEnabled = false;
+  try { ttsEnabled = localStorage.getItem("ttsEnabled") === "1"; } catch (e) {}
+  window.toggleTts = function(btn) {
+    ttsEnabled = !ttsEnabled;
+    try { localStorage.setItem("ttsEnabled", ttsEnabled ? "1" : "0"); } catch (e) {}
+    if (!ttsEnabled && window.speechSynthesis) speechSynthesis.cancel();
+    if (btn) { btn.textContent = ttsEnabled ? "🔊 음성 ON" : "🔇 음성 OFF"; btn.style.color = ttsEnabled ? "#50e3c2" : "#9ca3af"; }
+  };
+  function speakDialogue(rawText) {
+    if (!ttsEnabled || !window.speechSynthesis) return;
+    try {
+      speechSynthesis.cancel();
+      // 💬 라인들에서 따옴표 안 대사만 추출
+      const quotes = [];
+      rawText.split("\n").forEach(line => {
+        if (line.startsWith("💬")) {
+          const m = line.match(/["\u201c]([^"\u201d]+)["\u201d]/);
+          if (m) quotes.push(m[1]);
+        }
+      });
+      if (quotes.length === 0) return;
+      const u = new SpeechSynthesisUtterance(quotes.join(". "));
+      u.lang = "ko-KR"; u.rate = 1.05; u.pitch = 0.9;
+      speechSynthesis.speak(u);
+    } catch (e) { /* TTS 실패 무시 */ }
+  }
+
+  // ── 배지 시스템 (localStorage) ─────────────────────────────────
+  const BADGE_DEFS = [
+    { id: "first_arrest", icon: "🚔", name: "첫 검거",     desc: "피의자 체포로 훈련 완수" },
+    { id: "negotiator",   icon: "🕊️", name: "협상가",     desc: "무력 없이 협상으로 투항시켜 체포" },
+    { id: "iron_wall",    icon: "🛡️", name: "철벽",       desc: "체력 90 이상으로 훈련 종료" },
+    { id: "radio_master", icon: "📡", name: "교신왕",     desc: "한 훈련에서 모범 보고 2회 이상" },
+    { id: "detective",    icon: "🔍", name: "수사관",     desc: "증거 3건 확보" },
+    { id: "ace",          icon: "🎖️", name: "에이스",     desc: "종합 평점 90점 이상" },
+    { id: "guardian",     icon: "🧍", name: "수호자",     desc: "피해자 안전도 80 이상 유지하며 완수" },
+  ];
+  function getBadges() { try { return JSON.parse(localStorage.getItem("badges") || "{}"); } catch (e) { return {}; } }
+  function awardBadges(reasonText, finalScore) {
+    const owned = getBadges();
+    const newly = [];
+    const grant = id => { if (!owned[id]) { owned[id] = Date.now(); newly.push(BADGE_DEFS.find(b => b.id === id)); } };
+    if (/체포에 성공/.test(reasonText)) grant("first_arrest");
+    if (/협상으로/.test(reasonText)) grant("negotiator");
+    if (userHp >= 90) grant("iron_wall");
+    if (perfectReports >= 2) grant("radio_master");
+    if (evidenceCount >= 3) grant("detective");
+    if (finalScore >= 90) grant("ace");
+    if (hasVictim && victimSafety >= 80 && /성공/.test(reasonText)) grant("guardian");
+    try { localStorage.setItem("badges", JSON.stringify(owned)); } catch (e) {}
+    return newly;
+  }
+  function renderBadgeShelf(targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    const owned = getBadges();
+    el.innerHTML = BADGE_DEFS.map(b =>
+      `<span title="${b.name}: ${b.desc}" style="font-size:20px;margin:0 3px;${owned[b.id] ? "" : "filter:grayscale(1);opacity:0.3;"}">${b.icon}</span>`
+    ).join("");
+  }
+
   // 오프라인 폴백: AI 실패 시 클라이언트 생성 턴 서사
   function makeFallbackTurnReply(atk) {
     let desc = "무전 신호가 어지럽게 끊긴다.\n\n나는 침착하게 현장 통제를 이어간다.";
@@ -1024,6 +1121,8 @@
     GEMINI_API_KEY = apiKey;
     maxTurns = parseInt(document.getElementById("max-turns").value, 10);
     difficulty = document.getElementById("difficulty").value || "중급";
+    shiftMode = !!document.getElementById("shift-mode")?.checked;
+    shiftCase = 1;
 
     player = { name, rank };
     selectedJurisdiction = jurisdiction;
@@ -1086,6 +1185,13 @@
     updatePixelArt(1);
     updateWeaponChips();
     updateInputHints();
+
+    // 첫 실행 튜토리얼
+    maybeShowTutorial();
+
+    // TTS 버튼 상태 반영
+    const ttsBtn = document.getElementById("tts-toggle");
+    if (ttsBtn && ttsEnabled) { ttsBtn.textContent = "🔊 음성 ON"; ttsBtn.style.color = "#50e3c2"; }
 
     // 초급 난이도: 표준 대응 힌트 버튼 노출
     const hintBtn = document.getElementById("manual-hint-btn");
@@ -1781,7 +1887,7 @@
     pistolAmmo = 3; taserCount = 2; warningGiven = false; pistolTension = false; lastShotWasBlank = false;
     turnLog = [];
     negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
-    pistolGripTurn = -1;
+    pistolGripTurn = -1; perfectReports = 0; shiftCase = 1;
     colleagueCrisis = false; colleagueCrisisDone = false; rescueLockTurns = 0; kimDown = false; leeDown = false;
     clearGameSnapshot();
     gameClockMs = randomDispatchMs();
@@ -2013,7 +2119,54 @@
     setTimeout(() => triggerFinalEvaluation(arrestMode === "협상체포" ? "협상체포" : "체포완료"), 1200);
   }
 
+  // 연속 근무: 다음 사건 시작 (체력·멘탈·탄약·점수 이월)
+  window.startNextShiftCase = async function() {
+    suspectInfo = SUSPECT_POOL[randInt(0, SUSPECT_POOL.length - 1)];
+    suspectRevealed = false; suspectRevealTurn = randInt(2, 5);
+    suspectResist = randInt(85, 100);
+    hasVictim = !!suspectInfo.hasVictim;
+    victimSafety = hasVictim ? randInt(70, 90) : 100;
+    victimIsFemale = (suspectInfo.type === "성범죄자형" || suspectInfo.type === "가정폭력형") ? Math.random() < 0.85 : Math.random() < 0.5;
+    hasAccomplice = Math.random() < 0.20;
+    if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
+    turnCount = 1; lastReportTurn = 1;
+    negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
+    controlRate = 65; // 새 현장
+    kimDown = false; leeDown = false; colleagueCrisis = false;
+    warningGiven = false; pistolTension = false;
+    supportRequested = false; supportArrivalTurn = -1; supportArrived = false;
+    officerLeeRow.style.display = "none"; supportEtaLine.style.display = "none";
+    const locations = JURISDICTION_MAP[selectedJurisdiction];
+    currentLocation = locations[randInt(0, locations.length - 1)];
+    document.getElementById("dispatch-location").textContent = currentLocation;
+    suspectTypeEl.textContent = "[??? - 용의자 정보 수집 중]";
+    stageEl.textContent = `1 / ${maxTurns} 턴`;
+    sendChatBtn.disabled = false; sendActionBtn.disabled = false;
+    chatInputEl.disabled = false; actionInputEl.disabled = false;
+    const vRow = document.getElementById("victim-gauge-row");
+    if (vRow) vRow.style.display = hasVictim ? "flex" : "none";
+    appendSystemNote(`🚔 [사건 2/2] 새 신고 접수 — 체력 ${userHp}·멘탈 ${userMental}·잔탄 ${pistolAmmo}발·테이저 ${taserCount}회 이월 (회복 없음)`);
+    updateStatusBars(); updateWeaponChips(); updateInputHints(); updatePixelArt(1);
+    await handleLogin._restart();
+  };
+
   async function triggerFinalEvaluation(reason) {
+    // 연속 근무: 사건 1 정상 종결 시 다음 사건으로 (사망·강제종료는 그대로 종료)
+    if (shiftMode && shiftCase === 1 && ["체포완료", "협상체포", "턴종료"].includes(reason)) {
+      shiftCase = 2;
+      const div = document.createElement("div");
+      div.className = "message ai";
+      div.style.cssText = "text-align:center;padding:14px;border:1px solid #7c2d12;";
+      div.innerHTML =
+        `<p style="color:#f97316;font-weight:bold;margin-bottom:6px;">🌙 사건 1 종결 — 근무는 계속됩니다</p>` +
+        `<p style="color:#9ca3af;font-size:12px;margin-bottom:10px;">체력·멘탈·탄약이 이월됩니다. 무전기가 다시 울립니다...</p>` +
+        `<button class="option-btn" onclick="this.disabled=true;startNextShiftCase()" style="background:#7c2d12;font-size:14px;padding:10px 20px;">🚔 다음 사건 출동</button>`;
+      chatWindow.appendChild(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      playSfx("radio");
+      sendChatBtn.disabled = true; sendActionBtn.disabled = true;
+      return;
+    }
     disableGameInput("훈련 완료");
     clearGameSnapshot();
     const reasonMap = {
@@ -2066,6 +2219,7 @@
       (surrendered ? `※ 특기사항: 물리력 없이 협상·설득만으로 용의자를 투항시킴 (비례원칙의 모범 사례로 높이 평가하라)\n` : "") +
       `확보 증거: ${evidenceCount}건 (증거 확보·목격자 진술 청취는 수사 기초 역량으로 평가에 반영하라. 0건이면 미흡한 점으로 지적)\n` +
       (hasAccomplice ? `※ 공범 동행 2인조 사건이었음 (다수 대상 통제 역량 평가에 반영)\n` : "") +
+      (shiftMode ? `※ 연속 근무 모드: 사건 2건을 연속 처리한 훈련이었음 (지구력·연속 대응 역량을 높이 평가하라)\n` : "") +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
       `\n${LAW_CONTEXT}${ragCtx}\n${POLICE_MANUAL_CONTEXT}\n\n` +
@@ -2166,6 +2320,16 @@
     // ── 오답 노트 저장 (다음 훈련 시작 시 리마인드) ──
     try { localStorage.setItem("lastBadItems", JSON.stringify(badItems.slice(0, 5))); } catch (e) {}
 
+    // ── 배지 수여 ──
+    const newBadges = awardBadges(reasonText, scoreNum);
+    window._shareData = { scoreNum, reasonText, newBadges };
+    const badgeHtml = newBadges.length > 0
+      ? `<div style="text-align:center;background:rgba(251,191,36,0.1);border:1px solid #fbbf24;border-radius:8px;padding:12px;margin-bottom:18px;">
+          <div style="color:#fbbf24;font-weight:bold;font-size:13px;margin-bottom:6px;">🏅 새 배지 획득!</div>
+          ${newBadges.map(b => `<div style="font-size:14px;margin:3px 0;">${b.icon} <b>${b.name}</b> — <span style="color:#9ca3af;font-size:12px;">${b.desc}</span></div>`).join("")}
+        </div>`
+      : "";
+
     // ── 훈련 이력 저장 (Supabase, 실패 무시) ──
     try {
       fetch(`${SUPABASE_URL}/rest/v1/training_results`, {
@@ -2219,6 +2383,8 @@
         ${comment ? `<div class="eval-score-comment">${esc(comment)}</div>` : ''}
       </div>
 
+      ${badgeHtml}
+
       <div class="eval-section-title">📝 훈련 총평</div>
       <div class="eval-summary-box">${esc(summary.trim())}</div>
 
@@ -2238,11 +2404,68 @@
         <p style="color:#6b7280;font-size:12px;margin-bottom:10px;">훈련 세션이 종료되었습니다.</p>
         <button class="option-btn" onclick="document.getElementById('eval-zone').style.display='none';document.getElementById('simulator-zone').classList.add('active');" style="background:#374151;margin:4px;">← 뒤로가기 (훈련 내용 확인)</button>
         <button class="option-btn" onclick="saveEvalAsImage()" style="background:#4c1d95;margin:4px;">💾 평가서 저장 (PNG)</button>
+        <button class="option-btn" onclick="saveShareCard()" style="background:#0e7490;margin:4px;">🖼️ 결과 카드 저장</button>
         <button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>
         <button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>
       </div>
       <div style="text-align:center;margin-top:12px;font-size:11px;color:#4b5563;letter-spacing:0.5px;">Built by Lakee in CBPA(JC)</div>
     </div>`;
+  };
+
+  // 결과 공유 카드 (540x760 세로 카드, Canvas 직접 렌더)
+  window.saveShareCard = function() {
+    try {
+      const d = window._shareData || { scoreNum: 0, reasonText: "-", newBadges: [] };
+      const cv = document.createElement("canvas");
+      cv.width = 540; cv.height = 760;
+      const c = cv.getContext("2d");
+      // 배경
+      const bg = c.createLinearGradient(0, 0, 0, 760);
+      bg.addColorStop(0, "#0f172a"); bg.addColorStop(1, "#1e293b");
+      c.fillStyle = bg; c.fillRect(0, 0, 540, 760);
+      // 상단 경광등 바
+      c.fillStyle = "#ff3b30"; c.fillRect(0, 0, 270, 10);
+      c.fillStyle = "#3b82f6"; c.fillRect(270, 0, 270, 10);
+      // 타이틀
+      c.fillStyle = "#94a3b8"; c.font = "bold 18px 'Malgun Gothic', sans-serif"; c.textAlign = "center";
+      c.fillText("경찰 초동조치 도상훈련", 270, 70);
+      c.fillStyle = "#f9fafb"; c.font = "bold 30px 'Malgun Gothic', sans-serif";
+      c.fillText("종합평가 결과", 270, 110);
+      // 점수
+      const scoreColor = d.scoreNum >= 80 ? "#10b981" : d.scoreNum >= 60 ? "#fbbf24" : "#f97316";
+      c.fillStyle = scoreColor; c.font = "bold 120px 'Malgun Gothic', sans-serif";
+      c.fillText(`${d.scoreNum}`, 270, 270);
+      c.fillStyle = "#64748b"; c.font = "16px 'Malgun Gothic', sans-serif";
+      c.fillText("/ 100점", 270, 300);
+      // 정보
+      c.fillStyle = "#e2e8f0"; c.font = "bold 20px 'Malgun Gothic', sans-serif";
+      c.fillText(`${player.rank} ${player.name}`, 270, 360);
+      c.fillStyle = "#94a3b8"; c.font = "15px 'Malgun Gothic', sans-serif";
+      c.fillText(`용의자: [${suspectInfo.type}] ${suspectInfo.crimeType}`, 270, 392);
+      c.fillText(`${selectedJurisdiction}`, 270, 418);
+      const rt = d.reasonText.length > 30 ? d.reasonText.slice(0, 30) + "…" : d.reasonText;
+      c.fillText(rt, 270, 444);
+      // 수치 요약
+      c.fillStyle = "#475569"; c.fillRect(60, 480, 420, 1);
+      c.fillStyle = "#cbd5e1"; c.font = "15px 'Malgun Gothic', sans-serif";
+      c.fillText(`🚨 통제도 ${controlRate}   ⚖️ 적법률 ${legalRate}   ❤️ 체력 ${userHp}`, 270, 520);
+      c.fillText(`🔍 증거 ${evidenceCount}건   💯 훈련점수 ${score}점${shiftMode ? "   🌙 연속근무" : ""}`, 270, 550);
+      // 배지
+      if (d.newBadges.length > 0) {
+        c.fillStyle = "#fbbf24"; c.font = "bold 15px 'Malgun Gothic', sans-serif";
+        c.fillText("🏅 획득 배지", 270, 600);
+        c.fillStyle = "#e2e8f0"; c.font = "16px 'Malgun Gothic', sans-serif";
+        c.fillText(d.newBadges.map(b => `${b.icon} ${b.name}`).join("   "), 270, 630);
+      }
+      // 푸터
+      c.fillStyle = "#475569"; c.font = "12px 'Malgun Gothic', sans-serif";
+      c.fillText(new Date().toLocaleDateString("ko-KR"), 270, 700);
+      c.fillText("Built by Lakee in CBPA(JC)", 270, 726);
+      const a = document.createElement("a");
+      a.download = `도상훈련_결과카드_${player.name}_${new Date().toISOString().slice(0, 10)}.png`;
+      a.href = cv.toDataURL("image/png");
+      a.click();
+    } catch (e) { alert("카드 저장 실패: " + e.message); }
   };
 
   // 평가서를 PNG로 저장 (외부 라이브러리 없이 SVG foreignObject 사용)
@@ -2298,16 +2521,19 @@
     if (surrendered || !suspectInfo) return res;
     const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
     const timePhase = getTimePhase();
-    const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
-    const tensionBonus = pistolTension ? 0.15 : 0;
-    const nightBonus = timePhase === "night" ? 0.08 : 0;
-    const accompliceBonus = hasAccomplice ? 0.08 : 0;
-    if (Math.random() >= Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus + accompliceBonus) * df.atk)) return res;
+    const baseProb = { physical: 0.28, verbal: 0.26, both: 0.26, random: 0.24 }[suspectInfo.attackMode] || 0.25;
+    const tensionBonus = pistolTension ? 0.10 : 0;
+    const nightBonus = timePhase === "night" ? 0.06 : 0;
+    const accompliceBonus = hasAccomplice ? 0.06 : 0;
+    let atkProb = Math.min(0.70, (baseProb + (100 - controlRate) / 250 + tensionBonus + nightBonus + accompliceBonus) * df.atk);
+    if (suspectAttackedLastTurn) atkProb *= 0.35;   // 연속 공격 쿨다운
+    if (turnCount <= 2) atkProb *= 0.30;            // 초반 대치 형성 단계 유예
+    if (Math.random() >= atkProb) return res;
     res.attacked = true;
     const m = suspectInfo.attackMode;
     if      (m === "physical") { res.ctrlLoss = randInt(8, 15); res.physicalHit = true; }
     else if (m === "verbal")   { res.ctrlLoss = randInt(3, 6); }
-    else if (m === "both")     { res.ctrlLoss = randInt(8, 15) + randInt(3, 5); res.physicalHit = true; }
+    else if (m === "both")     { res.physicalHit = Math.random() < 0.6; res.ctrlLoss = res.physicalHit ? randInt(8, 15) : randInt(3, 6); }
     else {
       res.physicalHit = Math.random() < 0.5;
       res.ctrlLoss = res.physicalHit ? randInt(8, 15) : randInt(3, 6);
@@ -2317,19 +2543,19 @@
       res.weaponName = { gun: "사제총기", blade: "흉기(칼)", blunt: "둔기", none: "맨손" }[w] || "맨손";
       if (w === "gun") {
         res.icon = "🔫";
-        if (Math.random() < Math.min(0.9, 0.5 * df.fatal)) res.fatal = true; else res.dmg = randInt(50, 80);
+        if (Math.random() < Math.min(0.4, 0.07 * df.fatal)) res.fatal = true; else res.dmg = randInt(15, 32);
       } else if (w === "blade") {
         res.icon = "🗡️";
-        if (Math.random() < Math.min(0.9, 0.2 * df.fatal)) res.fatal = true; else res.dmg = randInt(30, 60);
+        if (Math.random() < Math.min(0.3, 0.04 * df.fatal)) res.fatal = true; else res.dmg = randInt(10, 24);
       } else if (w === "blunt") {
-        res.icon = "🔨"; res.dmg = randInt(20, 50);
+        res.icon = "🔨"; res.dmg = randInt(8, 20);
       } else {
-        res.dmg = randInt(5, 15);
+        res.dmg = randInt(2, 8);
       }
-      // 방검복: 도검 즉사 방지 + 도검/둔기 데미지 40% 경감
+      // 방검복: 도검 즉사 방지 + 도검/둔기 데미지 50% 경감
       if (isArmorEquipped) {
-        if (res.fatal && w === "blade") { res.fatal = false; res.dmg = randInt(30, 60); res.armorSaved = true; }
-        if (!res.fatal && (w === "blade" || w === "blunt")) res.dmg = Math.round(res.dmg * 0.6);
+        if (res.fatal && w === "blade") { res.fatal = false; res.dmg = randInt(18, 38); res.armorSaved = true; }
+        if (!res.fatal && (w === "blade" || w === "blunt")) res.dmg = Math.round(res.dmg * 0.5);
       }
     }
     return res;
@@ -2387,7 +2613,7 @@
         const quality = w5.filter(r => r.test(text)).length;
         legalDelta += quality;
         notes.push(`📡 보고 품질: ${quality}/5 요소 (적법률 +${quality})`);
-        if (quality >= 4) { score += 5; scoreEl.textContent = score; notes.push("📡 모범 보고 (육하원칙 충실): 훈련점수 +5"); }
+        if (quality >= 4) { score += 5; scoreEl.textContent = score; perfectReports++; notes.push("📡 모범 보고 (육하원칙 충실): 훈련점수 +5"); }
       } else if (/(강태구|안정국)/.test(text) && /(테이저|삼단봉|권총|제압|검거|체포|진압)/.test(text)) {
         // 동료에게 장구/제압 지시 — 계급 서열 확인
         const targetLee = /안정국/.test(text) && supportArrived;
@@ -2447,6 +2673,11 @@
 
     // 무보고 적법률 패널티
     if (preNoReport > 3) legalDelta -= 3;
+
+    // 피격 없는 턴: 호흡 정리로 체력 소폭 회복
+    if (!(atk && atk.attacked && atk.physicalHit) && userHp > 0 && userHp < 100) {
+      userHp = Math.min(100, userHp + 6);
+    }
 
     // 용의자 공격 (사전 판정 결과 적용 — 판정은 rollSuspectAttack에서 프롬프트 생성 전 수행)
     suspectAttackedLastTurn = false;
@@ -2749,6 +2980,7 @@
 
       loadingDiv.remove();
       const aiDiv = formatAndAppendMessage(aiReply, "ai");
+      speakDialogue(aiReply);
       if (offlineMode) {
         appendSystemNote("⚠️ AI 연결 불안정 — 오프라인 모드로 턴을 진행했습니다 (수치 계산은 정상 반영)");
       } else {
@@ -2924,6 +3156,8 @@
     chatWindow.scrollTop = chatWindow.scrollHeight;
     return div;
   }
+  // 로그인 화면: 배지 진열 (정의 이후 호출)
+  renderBadgeShelf("login-badges");
 })();
 </script>
 </body>

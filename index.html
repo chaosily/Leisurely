@@ -477,7 +477,7 @@
     { type: "교활형",     crimeType: "절도·사기",     hasVictim: false,     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   armedWith: "none",  arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
     { type: "성범죄자형", crimeType: "강간·성추행",   hasVictim: true,    desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   armedWith: "none",  arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
     { type: "음주폭력형", crimeType: "폭행·상해",     hasVictim: true,      desc: "만취 상태 폭행, 둔기 휘두름",               attackMode: "physical", armedWith: "blunt", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압.", lawKeyword: "경찰장구" },
-    { type: "교통도주형", crimeType: "교통사고 후 도주", hasVictim: true,  desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
+    { type: "교통도주형", crimeType: "교통사고 후 도주", hasVictim: true, hasVehicle: true, desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
     { type: "가정폭력형", crimeType: "가정폭력·아동학대", hasVictim: true,  desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   armedWith: "blunt", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
   ];
 
@@ -1245,6 +1245,32 @@
     ctx.fillRect(x + 19, y - 2, 3, 1);
   }
 
+  // 용의자 도주 차량 (파손된 민간 차량, 비상등 점멸)
+  function drawSuspectCar(ctx, x, y, phase, fleeing) {
+    const OUT = "#05070c";
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(x, y - 1, 27, 1);           // 그림자
+    ctx.fillStyle = OUT; ctx.fillRect(x - 1, y - 10, 29, 10);                    // 외곽
+    const body = fleeing ? "#8a2d2d" : "#4a5568";                               // 도주 중이면 붉은 계열
+    ctx.fillStyle = body; ctx.fillRect(x, y - 9, 27, 6);                         // 차체
+    ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(x, y - 5, 27, 1);           // 하부 음영
+    ctx.fillStyle = OUT; ctx.fillRect(x + 4, y - 14, 17, 5);                     // 캐빈 외곽
+    ctx.fillStyle = body; ctx.fillRect(x + 5, y - 13, 15, 2);                    // 루프
+    ctx.fillStyle = "#2a3340"; ctx.fillRect(x + 5, y - 11, 15, 2);               // 유리
+    ctx.fillStyle = "#4a5568"; ctx.fillRect(x + 12, y - 11, 1, 2);               // 창틀
+    // 파손: 앞범퍼 찌그러짐 + 깨진 헤드라이트
+    ctx.fillStyle = "#2a2a30"; ctx.fillRect(x - 1, y - 6, 2, 3);                 // 찌그러진 앞부분
+    ctx.fillStyle = "#7a7a44"; ctx.fillRect(x, y - 7, 1, 1);                     // 깨진 라이트
+    // 비상등 점멸 (양쪽 주황)
+    const on = cctvFrame % 2 === 0;
+    ctx.fillStyle = on ? "#ff9500" : "#5a3a00";
+    ctx.fillRect(x + 1, y - 8, 2, 1); ctx.fillRect(x + 24, y - 8, 2, 1);
+    // 바퀴
+    ctx.fillStyle = OUT;
+    ctx.fillRect(x + 4, y - 3, 5, 3); ctx.fillRect(x + 18, y - 3, 5, 3);
+    ctx.fillStyle = "#4a4a55";
+    ctx.fillRect(x + 5, y - 2, 3, 1); ctx.fillRect(x + 19, y - 2, 3, 1);
+  }
+
   function updatePixelArt(stageNum) {
     const cv = document.getElementById("cctv-canvas");
     if (!cv) return;
@@ -1367,6 +1393,11 @@
       ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[suspectInfo.armedWith])
       : null;
     const wob = cctvFrame % 2;                    // 미세 움직임 (초조한 흔들림)
+    // 용의자 도주 차량 (교통도주형): 용의자 뒤쪽에 표시
+    if (suspectInfo && suspectInfo.hasVehicle && !surrendered) {
+      const carX = Math.min(W - 28, sx + 14);
+      drawSuspectCar(ctx, carX, baseY, phase, escapePhase);
+    }
     const suspectPose = surrendered ? "handsup" : (suspectAttackedLastTurn || pistolTension) ? "attack" : "normal";
     drawPerson(ctx, sx + (surrendered ? 0 : wob), baseY, { body: suspectBody, weapon: weaponColor, hair: "#1c1410", pose: suspectPose });
 

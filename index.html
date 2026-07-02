@@ -86,8 +86,7 @@
 
     .colleague-panel { background: var(--status-bg); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 10px; overflow: hidden; }
 
-    #pixel-art-zone { width: 100%; height: 100px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
-    @media (min-width: 600px) { #pixel-art-zone { height: 160px; } }
+    #pixel-art-zone { width: 100%; aspect-ratio: 3 / 1; height: auto; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #111; position: relative; overflow: hidden; }
     .live-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); border: 1px solid #ef4444; color: #ef4444; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 4px; }
     #cctv-canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; animation: cctvFlicker 4s infinite; }
     @keyframes cctvFlicker { 0%,100% { opacity: 1; } 97% { opacity: 1; } 98% { opacity: 0.85; } 99% { opacity: 0.95; } }
@@ -263,7 +262,7 @@
     <!-- ① 상황 정보 패널 (접이식) -->
     <div class="collapsible-panel" id="panel-status">
       <div class="collapsible-header" onclick="togglePanel('panel-status')">
-        <span style="flex:1;">🎖️ 유저: <span id="player-info" style="color:#60a5fa;"></span> &nbsp;|&nbsp; ⏳ <span id="current-stage">1 / 20 턴</span> &nbsp;|&nbsp; 💯 <span id="current-score" style="color:var(--accent-score);">0</span>점
+        <span style="flex:1;">🎖️ 유저: <span id="player-info" style="color:#60a5fa;"></span> &nbsp;|&nbsp; ⏳ <span id="current-stage">1 / 20 턴</span><span id="current-score" style="display:none;">0</span>
         <div class="hdr-bar-row">
           <span class="hdr-bar-label">❤️ 체력</span>
           <div class="gauge-bg"><div id="bar-user-hp" class="gauge-fill user-hp normal" style="width:100%;"></div></div>
@@ -305,10 +304,6 @@
           <div class="gauge-wrapper">
             <span style="white-space:nowrap;">🕊️ 협상: <span id="txt-nego">0%</span></span>
             <div class="gauge-bg"><div id="bar-nego" class="gauge-fill" style="width:0%;background:#34d399;"></div></div>
-          </div>
-          <div class="gauge-wrapper" id="victim-gauge-row" style="display:none;">
-            <span style="white-space:nowrap;">🧍 피해자: <span id="txt-victim">100%</span></span>
-            <div class="gauge-bg"><div id="bar-victim" class="gauge-fill" style="width:100%;background:#38bdf8;"></div></div>
           </div>
         </div>
       </div>
@@ -356,7 +351,7 @@
 
     <div id="pixel-art-zone">
       <div class="live-badge">📡 112 상황실 CCTV 현장 연동</div>
-      <canvas id="cctv-canvas" width="96" height="54"></canvas>
+      <canvas id="cctv-canvas" width="192" height="64"></canvas>
       <span id="cctv-timestamp"></span>
     </div>
 
@@ -647,6 +642,12 @@
       }
     } catch (e) {}
   })();
+
+  // 계급 서열 (지시 가능 여부 판단)
+  const RANK_ORDER = ["순경", "경장", "경사", "경위", "경감", "경정", "총경"];
+  function rankIndex(rank) { const i = RANK_ORDER.indexOf(rank); return i === -1 ? 0 : i; }
+  // 강태구 = 경사, 안정국 = 경장
+  function canCommand(targetRank) { return rankIndex(player.rank) >= rankIndex(targetRank); }
 
   // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외) — 게임 내 시계 기준 (턴당 8~15분 경과)
   function getTimePhase() {
@@ -1069,140 +1070,218 @@
   }
 
   function drawPerson(ctx, x, y, opts) {
-    // opts: { body, cap, lying, weapon }  기준 y = 바닥선, 스프라이트 4x11
+    // opts: { body, cap, lying, weapon, vest, hair }  x=좌측, y=발끝. 스프라이트 12x20 (외곽선 방식)
+    const OUT = "#05070c";
     if (opts.lying) {
-      ctx.fillStyle = opts.body;
-      ctx.fillRect(x - 4, y - 3, 9, 3);
-      ctx.fillStyle = "#f0c8a0";
-      ctx.fillRect(x + 5, y - 3, 3, 3);
+      ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(x - 2, y - 1, 20, 1);
+      ctx.fillStyle = OUT; ctx.fillRect(x - 1, y - 6, 19, 6);
+      ctx.fillStyle = opts.body; ctx.fillRect(x, y - 5, 13, 4);
+      ctx.fillStyle = "#f0c8a0"; ctx.fillRect(x + 13, y - 5, 4, 4);   // 머리
+      ctx.fillStyle = "#0a0a0f"; ctx.fillRect(x, y - 3, 2, 2);        // 신발
       return;
     }
-    // 야간 가시성: 어두운 외곽선
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(x - 1, y - 12, 6, 12);
-    ctx.fillStyle = "#f0c8a0";                    // 머리
-    ctx.fillRect(x, y - 10, 4, 3);
-    if (opts.cap) { ctx.fillStyle = opts.cap; ctx.fillRect(x - 1, y - 11, 6, 2); }
-    ctx.fillStyle = opts.body;                    // 몸통
-    ctx.fillRect(x, y - 7, 4, 5);
-    ctx.fillStyle = "#101018";                    // 다리
-    ctx.fillRect(x, y - 2, 1, 2);
-    ctx.fillRect(x + 3, y - 2, 1, 2);
-    if (opts.weapon) { ctx.fillStyle = opts.weapon; ctx.fillRect(x + 4, y - 6, 2, 2); }
+    // 발밑 그림자
+    ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(x, y, 12, 1);
+    // ── 외곽 실루엣 (배경과 분리) ──
+    ctx.fillStyle = OUT;
+    ctx.fillRect(x + 2, y - 21, 8, 8);    // 머리 외곽
+    ctx.fillRect(x, y - 15, 12, 9);       // 몸통+팔 외곽
+    ctx.fillRect(x + 1, y - 8, 10, 8);    // 다리 외곽
+    // ── 머리 ──
+    if (opts.cap) {
+      ctx.fillStyle = opts.cap;
+      ctx.fillRect(x + 3, y - 20, 6, 2);                       // 정모 상단
+      ctx.fillRect(x + 3, y - 18, 8, 1);                       // 챙
+      ctx.fillStyle = "#f9d71c"; ctx.fillRect(x + 5, y - 20, 2, 1); // 모표
+    } else {
+      ctx.fillStyle = opts.hair || "#2a2018";
+      ctx.fillRect(x + 3, y - 20, 6, 2);
+      ctx.fillRect(x + 3, y - 18, 1, 2);                       // 옆머리
+    }
+    ctx.fillStyle = "#f0c8a0";                                 // 얼굴
+    ctx.fillRect(x + 4, y - 17, 5, 3);
+    ctx.fillStyle = "#1a1a1a";                                 // 눈
+    ctx.fillRect(x + 5, y - 16, 1, 1);
+    ctx.fillRect(x + 7, y - 16, 1, 1);
+    // ── 몸통 ──
+    ctx.fillStyle = opts.body;
+    ctx.fillRect(x + 2, y - 14, 8, 7);                         // 상의
+    if (opts.vest) { ctx.fillStyle = "#e8f36a"; ctx.fillRect(x + 2, y - 12, 8, 1); } // 형광 반사띠
+    ctx.fillStyle = "#15151c"; ctx.fillRect(x + 2, y - 8, 8, 1);   // 벨트
+    ctx.fillStyle = "#c9a227"; ctx.fillRect(x + 5, y - 8, 2, 1);   // 버클
+    // ── 팔 + 손 ──
+    ctx.fillStyle = opts.body;
+    ctx.fillRect(x + 1, y - 14, 1, 5);
+    ctx.fillRect(x + 10, y - 14, 1, 5);
+    ctx.fillStyle = "#f0c8a0";
+    ctx.fillRect(x + 1, y - 9, 1, 2);
+    ctx.fillRect(x + 10, y - 9, 1, 2);
+    // ── 다리 + 신발 ──
+    ctx.fillStyle = "#1c2433";
+    ctx.fillRect(x + 3, y - 7, 3, 6);
+    ctx.fillRect(x + 7, y - 7, 3, 6);
+    ctx.fillStyle = "#0a0a0f";
+    ctx.fillRect(x + 2, y - 1, 4, 1);
+    ctx.fillRect(x + 7, y - 1, 4, 1);
+    // ── 무기 (오른손 옆) ──
+    if (opts.weapon) {
+      ctx.fillStyle = OUT; ctx.fillRect(x + 11, y - 12, 4, 6);
+      ctx.fillStyle = opts.weapon; ctx.fillRect(x + 12, y - 11, 2, 4);
+    }
+  }
+
+  // 경찰차 도트 (경광등 점멸)
+  function drawPoliceCar(ctx, x, y, stageNum) {
+    ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(x, y - 1, 27, 1);          // 그림자
+    ctx.fillStyle = "#05070c"; ctx.fillRect(x - 1, y - 10, 29, 10);            // 외곽
+    ctx.fillStyle = "#ecedf2"; ctx.fillRect(x, y - 9, 27, 5);                  // 차체
+    ctx.fillStyle = "#1e3a8a"; ctx.fillRect(x, y - 6, 27, 2);                  // 파란 띠
+    ctx.fillStyle = "#05070c"; ctx.fillRect(x + 3, y - 14, 18, 5);             // 캐빈 외곽
+    ctx.fillStyle = "#ecedf2"; ctx.fillRect(x + 4, y - 13, 16, 1);             // 루프
+    ctx.fillStyle = "#9fc0e0"; ctx.fillRect(x + 4, y - 12, 16, 3);             // 유리
+    ctx.fillStyle = "#5a6a80"; ctx.fillRect(x + 11, y - 12, 1, 3);             // 창틀
+    const flip = stageNum % 2 === 0;                                            // 경광등 점멸
+    ctx.fillStyle = flip ? "#ff3b30" : "#3b82f6"; ctx.fillRect(x + 7, y - 16, 4, 2);
+    ctx.fillStyle = flip ? "#3b82f6" : "#ff3b30"; ctx.fillRect(x + 13, y - 16, 4, 2);
+    ctx.fillStyle = "#ffe9a8"; ctx.fillRect(x + 25, y - 8, 2, 2);              // 전조등
+    ctx.fillStyle = "#05070c";                                                  // 바퀴
+    ctx.fillRect(x + 4, y - 3, 5, 3);
+    ctx.fillRect(x + 18, y - 3, 5, 3);
+    ctx.fillStyle = "#4a4a55";
+    ctx.fillRect(x + 5, y - 2, 3, 1);
+    ctx.fillRect(x + 19, y - 2, 3, 1);
   }
 
   function updatePixelArt(stageNum) {
     const cv = document.getElementById("cctv-canvas");
     if (!cv) return;
     const ctx = cv.getContext("2d");
-    const W = cv.width, H = cv.height;
+    const W = cv.width, H = cv.height;               // 192 x 64
     const rng = mulberry32(hashStr(`${selectedJurisdiction}_${currentLocation}`));
     const pal = getScenePalette();
-    const gy = Math.floor(H * 0.85);              // 바닥선
-
     const phase = getTimePhase();
+    const hy = 42;                                    // 지평선 (건물 하단 = 보도 시작)
+    const baseY = H - 3;                              // 인물 발끝
 
-    // 하늘 (시간대별)
+    // ── 하늘 ──
     if (phase === "day") {
-      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      const sky = ctx.createLinearGradient(0, 0, 0, hy);
       sky.addColorStop(0, "#5b9bd5"); sky.addColorStop(1, "#a8cbe8");
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-      // 구름
-      ctx.fillStyle = "rgba(255,255,255,0.5)";
-      for (let i = 0; i < 3; i++) { const cx = Math.floor(rng() * W), cy = 3 + Math.floor(rng() * 8); ctx.fillRect(cx, cy, 7, 2); ctx.fillRect(cx + 2, cy - 1, 4, 1); }
-      // 해
-      ctx.fillStyle = "#fff3b0"; ctx.fillRect(W - 14, 4, 4, 4);
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hy);
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      for (let i = 0; i < 4; i++) { const cx = Math.floor(rng() * W), cy = 3 + Math.floor(rng() * 10); ctx.fillRect(cx, cy, 9, 2); ctx.fillRect(cx + 2, cy - 1, 5, 1); }
+      ctx.fillStyle = "rgba(255,243,176,0.35)"; ctx.fillRect(W - 26, 3, 11, 11);
+      ctx.fillStyle = "#fff3b0"; ctx.fillRect(W - 24, 5, 7, 7);
     } else if (phase === "dusk") {
-      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      const sky = ctx.createLinearGradient(0, 0, 0, hy);
       sky.addColorStop(0, "#3b2a55"); sky.addColorStop(0.55, "#b3552e"); sky.addColorStop(1, "#e8955a");
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-      // 노을 해
-      ctx.fillStyle = "#ffb14a"; ctx.fillRect(W - 18, Math.floor(gy * 0.55), 5, 5);
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, hy);
+      ctx.fillStyle = "rgba(255,177,74,0.3)"; ctx.fillRect(W - 34, 20, 12, 12);
+      ctx.fillStyle = "#ffb14a"; ctx.fillRect(W - 31, 23, 7, 7);
     } else {
-      ctx.fillStyle = pal.sky; ctx.fillRect(0, 0, W, H);
-      for (let i = 0; i < 12; i++) {              // 별
-        if (rng() < 0.6) { ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(Math.floor(rng() * W), Math.floor(rng() * H * 0.3), 1, 1); }
+      ctx.fillStyle = pal.sky; ctx.fillRect(0, 0, W, hy);
+      for (let i = 0; i < 16; i++) {
+        if (rng() < 0.6) { ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(Math.floor(rng() * W), Math.floor(rng() * 22), 1, 1); }
       }
-      // 달
-      ctx.fillStyle = "#e8e8d0"; ctx.fillRect(W - 12, 4, 3, 3);
+      ctx.fillStyle = "rgba(232,232,208,0.25)"; ctx.fillRect(W - 24, 3, 9, 9);
+      ctx.fillStyle = "#e8e8d0"; ctx.fillRect(W - 22, 5, 5, 5);
     }
 
-    // 건물 실루엣 + 창문
+    // ── 건물 (지평선 위) ──
     let bx = 0;
     while (bx < W) {
-      const bw = 8 + Math.floor(rng() * 12);
-      const bh = Math.floor(H * (0.25 + rng() * 0.4));
-      ctx.fillStyle = pal.bld[Math.floor(rng() * pal.bld.length)];
-      ctx.fillRect(bx, gy - bh, bw, bh);
-      for (let wy = gy - bh + 2; wy < gy - 3; wy += 4) {
-        for (let wx = bx + 1; wx < bx + bw - 1; wx += 3) {
-          const winProb = phase === "day" ? 0.05 : 0.22;
-          if (rng() < winProb) { ctx.fillStyle = pal.win[Math.floor(rng() * pal.win.length)]; ctx.globalAlpha = 0.65; ctx.fillRect(wx, wy, 1, 2); ctx.globalAlpha = 1; }
+      const bw = 16 + Math.floor(rng() * 16);
+      const bh = 12 + Math.floor(rng() * 24);
+      const bldColor = pal.bld[Math.floor(rng() * pal.bld.length)];
+      ctx.fillStyle = bldColor;
+      ctx.fillRect(bx, hy - bh, bw, bh);
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(bx + bw - 2, hy - bh, 2, bh);
+      if (rng() < 0.5) {
+        ctx.fillStyle = "rgba(0,0,0,0.4)";
+        const rx = bx + 2 + Math.floor(rng() * (bw - 7));
+        if (rng() < 0.5) ctx.fillRect(rx, hy - bh - 3, 5, 3);
+        else { ctx.fillRect(rx, hy - bh - 5, 1, 5); ctx.fillRect(rx - 1, hy - bh - 5, 3, 1); }
+      }
+      for (let wy = hy - bh + 3; wy < hy - 4; wy += 5) {
+        for (let wx = bx + 2; wx < bx + bw - 3; wx += 4) {
+          const winProb = phase === "day" ? 0.08 : 0.28;
+          if (rng() < winProb) {
+            ctx.fillStyle = pal.win[Math.floor(rng() * pal.win.length)];
+            ctx.globalAlpha = 0.7; ctx.fillRect(wx, wy, 2, 3); ctx.globalAlpha = 1;
+          } else {
+            ctx.fillStyle = phase === "day" ? "rgba(150,180,210,0.35)" : "rgba(0,0,0,0.3)";
+            ctx.fillRect(wx, wy, 2, 3);
+          }
         }
       }
       bx += bw + 1 + Math.floor(rng() * 3);
     }
-    if (pal.trees) {                              // 공원: 나무
+    if (pal.trees) {
       for (let i = 0; i < 5; i++) {
-        const tx = Math.floor(rng() * W);
-        ctx.fillStyle = "#2f4f35"; ctx.fillRect(tx - 2, gy - 9, 5, 5);
-        ctx.fillStyle = "#3d2b1f"; ctx.fillRect(tx, gy - 4, 1, 4);
+        const tx = 10 + Math.floor(rng() * (W - 20));
+        ctx.fillStyle = "#2f4f35"; ctx.fillRect(tx - 4, hy - 13, 9, 8);
+        ctx.fillStyle = "#243f2a"; ctx.fillRect(tx - 2, hy - 15, 5, 3);
+        ctx.fillStyle = "#3d2b1f"; ctx.fillRect(tx, hy - 5, 2, 5);
       }
     }
 
-    // 바닥/도로
-    ctx.fillStyle = pal.ground; ctx.fillRect(0, gy, W, H - gy);
-    ctx.fillStyle = pal.road;   ctx.fillRect(0, gy, W, 2);
-    ctx.fillStyle = "rgba(255,255,255,0.18)";
-    for (let dx = 2; dx < W; dx += 8) ctx.fillRect(dx, gy + Math.floor((H - gy) / 2), 4, 1);
+    // ── 보도 + 도로 ──
+    ctx.fillStyle = pal.road; ctx.fillRect(0, hy, W, 4);                        // 보도
+    ctx.fillStyle = "rgba(255,255,255,0.12)"; ctx.fillRect(0, hy + 3, W, 1);    // 연석
+    ctx.fillStyle = pal.ground; ctx.fillRect(0, hy + 4, W, H - hy - 4);         // 도로
+    ctx.fillStyle = "rgba(255,255,255,0.18)";                                   // 차선
+    for (let dx = 4; dx < W; dx += 16) ctx.fillRect(dx, hy + 11, 8, 1);
+    ctx.fillStyle = "rgba(255,255,255,0.16)";                                   // 횡단보도 (우측)
+    for (let i = 0; i < 6; i++) ctx.fillRect(W - 40 + i * 5, hy + 5, 3, H - hy - 6);
+    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.fillRect(58, H - 6, 5, 2);           // 맨홀
 
-    // 가로등 + 광원 (밤·노을만 점등)
-    const lampX = Math.floor(W * 0.5);
-    ctx.fillStyle = "#3a3a44"; ctx.fillRect(lampX, gy - 16, 1, 16);
+    // ── 가로등 (보도 위) ──
+    const lampX = Math.floor(W * 0.52);
+    ctx.fillStyle = "#3a3a44"; ctx.fillRect(lampX, hy - 22, 2, 24);
+    ctx.fillRect(lampX - 5, hy - 22, 6, 1);
     if (phase !== "day") {
-      ctx.fillStyle = "#ffe9a8"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
-      const grad = ctx.createRadialGradient(lampX, gy - 16, 1, lampX, gy - 16, 14);
+      ctx.fillStyle = "#ffe9a8"; ctx.fillRect(lampX - 6, hy - 21, 3, 2);
+      const grad = ctx.createRadialGradient(lampX - 4, hy - 20, 2, lampX - 4, hy - 20, 24);
       grad.addColorStop(0, "rgba(255,233,168,0.25)"); grad.addColorStop(1, "rgba(255,233,168,0)");
-      ctx.fillStyle = grad; ctx.fillRect(lampX - 14, gy - 17, 28, 20);
+      ctx.fillStyle = grad; ctx.fillRect(lampX - 28, hy - 22, 48, 40);
     } else {
-      ctx.fillStyle = "#55555f"; ctx.fillRect(lampX - 1, gy - 17, 3, 1);
+      ctx.fillStyle = "#55555f"; ctx.fillRect(lampX - 6, hy - 21, 3, 2);
     }
 
-    // ── 인물 배치 (게임 상태 연동) ──
+    // ── 경찰차 + 인물 (도로 무대) ──
+    drawPoliceCar(ctx, 4, H - 4, stageNum);
     const dead = userHp <= 0;
-    drawPerson(ctx, 10, gy, { body: "#3b82f6", cap: "#1e3a8a", lying: dead });           // 유저
-    drawPerson(ctx, 18, gy, { body: "#3b82f6", cap: "#1e3a8a", lying: kimDown });        // 강태구
-    if (supportArrived) drawPerson(ctx, 26, gy, { body: "#60a5fa", cap: "#1e3a8a", lying: leeDown }); // 안정국
+    drawPerson(ctx, 38, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: dead });            // 유저
+    drawPerson(ctx, 56, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: kimDown });         // 강태구
+    if (supportArrived) drawPerson(ctx, 74, baseY, { body: "#4a7fd6", cap: "#152c5e", vest: true, lying: leeDown }); // 안정국
 
     // 용의자: 통제도 낮을수록 경찰 쪽으로 접근
-    const sx = Math.floor(W * 0.78 - (100 - controlRate) * 0.28);
+    const sx = Math.max(96, Math.floor(W * 0.82 - (100 - controlRate) * 0.55));
     const suspectBody = suspectRevealed
       ? ({ "깡패형": "#ef4444", "사이코형": "#c084fc", "교활형": "#f59e0b", "성범죄자형": "#fb923c", "음주폭력형": "#f87171", "교통도주형": "#9ca3af", "가정폭력형": "#dc2626" }[suspectInfo?.type] || "#ef4444")
       : "#b45050";
     const weaponColor = suspectInfo && suspectRevealed
       ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[suspectInfo.armedWith])
       : null;
-    drawPerson(ctx, sx, gy, { body: suspectBody, weapon: weaponColor });
+    drawPerson(ctx, sx, baseY, { body: suspectBody, weapon: weaponColor, hair: "#1c1410" });
 
     // 피해자
-    if (hasVictim) drawPerson(ctx, Math.min(W - 7, sx + 10), gy, { body: "#facc15", lying: victimSafety <= 40 });
-
-    // 낮 밝기 보정
-    if (phase === "day") { ctx.fillStyle = "rgba(200,220,255,0.10)"; ctx.fillRect(0, 0, W, H); }
+    if (hasVictim) drawPerson(ctx, Math.min(W - 16, sx + 22), baseY, { body: "#facc15", hair: "#3d2b1f", lying: victimSafety <= 40 });
 
     // ── CCTV 오버레이 ──
-    for (let y = 0; y < H; y += 3) { ctx.fillStyle = "rgba(0,0,0,0.14)"; ctx.fillRect(0, y, W, 1); }   // 스캔라인
+    if (phase === "day") { ctx.fillStyle = "rgba(200,220,255,0.08)"; ctx.fillRect(0, 0, W, H); }
+    for (let y = 0; y < H; y += 3) { ctx.fillStyle = "rgba(0,0,0,0.12)"; ctx.fillRect(0, y, W, 1); }
     const noiseRng = mulberry32(hashStr(`noise_${stageNum}_${Date.now() % 100000}`));
-    for (let i = 0; i < 90; i++) {                                                                       // 노이즈
-      ctx.fillStyle = noiseRng() < 0.5 ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.18)";
+    for (let i = 0; i < 160; i++) {
+      ctx.fillStyle = noiseRng() < 0.5 ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.16)";
       ctx.fillRect(Math.floor(noiseRng() * W), Math.floor(noiseRng() * H), 1, 1);
     }
-    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.4, W / 2, H / 2, W * 0.75);                 // 비네트
-    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.45)");
+    const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.5, W / 2, H / 2, W * 0.7);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,0.4)");
     ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = "#ff3b30"; ctx.fillRect(2, 2, 2, 2);                                                 // REC 도트
+    ctx.fillStyle = "#ff3b30"; ctx.fillRect(3, 3, 2, 2);
 
-    // 타임스탬프
     const ts = document.getElementById("cctv-timestamp");
     if (ts) {
       const now = new Date(gameClockMs || Date.now());
@@ -1917,11 +1996,18 @@
         ctrlDelta += 3; legalDelta += 5;
         if (preNoReport <= 2) { score += 5; scoreEl.textContent = score; notes.push("📡 조기 보고: 훈련점수 +5"); }
       } else if (/(강태구|안정국)/.test(text) && /(테이저|삼단봉|권총|제압|검거|체포|진압)/.test(text)) {
-        // 동료에게 장구/제압 지시
+        // 동료에게 장구/제압 지시 — 계급 서열 확인
         const targetLee = /안정국/.test(text) && supportArrived;
         const trust = targetLee ? leeTrust : kimTrust;
         const who = targetLee ? "안정국 경장" : "강태구 경사";
-        if (trust > 60) { ctrlDelta += 8; legalDelta += 2; notes.push(`👮 ${who}이(가) 지시에 따라 제압 지원: 통제도↑`); }
+        const targetRank = targetLee ? "경장" : "경사";
+        if (!canCommand(targetRank)) {
+          // 하급자가 상급자에게 지시 불가
+          ctrlDelta -= 3;
+          notes.push(`⚠️ ${who}은(는) 상급자입니다 — ${player.rank}이(가) 지시할 수 없습니다 (지휘체계 혼선: 통제도↓)`);
+          if (!targetLee) kimTrust = Math.max(0, kimTrust - 3);
+          else leeTrust = Math.max(0, leeTrust - 3);
+        } else if (trust > 60) { ctrlDelta += 8; legalDelta += 2; notes.push(`👮 ${who}이(가) 지시에 따라 제압 지원: 통제도↑`); }
         else if (trust > 40) {
           if (Math.random() < 0.5) { ctrlDelta += 8; notes.push(`👮 ${who}이(가) 망설이다 지시 수행: 통제도↑`); }
           else { ctrlDelta -= 2; notes.push(`👮 ${who}이(가) 머뭇거립니다 (신뢰 부족)`); }
@@ -2209,7 +2295,13 @@
         `현장 위치: [${selectedJurisdiction} ${currentLocation}] | 시간대: ${getTimePhase() === "night" ? "야간(어두움·시야제한)" : getTimePhase() === "dusk" ? "일몰 무렵" : "주간(시민 목격자 다수)"}\n\n` +
         `[용의자 정보]\n${suspectInfoStr}\n\n` +
         `[용의자 공격 지침]\n${attackInstruction}\n` +
-        `[현재 동료 상태]\n` +
+        `[현재 동료 상태 및 지휘 관계]\n` +
+        `유저 계급: ${player.rank} | 강태구: 경사 | 안정국: 경장\n` +
+        (rankIndex(player.rank) < rankIndex("경사")
+          ? `※ 유저(${player.rank})는 강태구 경사보다 하급자다. 강태구 경사가 현장 선임으로서 유저에게 지시·조언하는 대사를 적극적으로 포함하라 (예: "홍 순경! 좌측 차단해!"). 유저가 강태구에게 명령조로 지시하면 강태구가 "지휘는 내가 한다"며 제지하는 반응을 보여라.\n`
+          : rankIndex(player.rank) === rankIndex("경사")
+          ? `※ 유저와 강태구 경사는 동급자다. 상호 협의하며 대응하는 관계로 묘사하라.\n`
+          : `※ 유저(${player.rank})가 현장 지휘관이다. 강태구 경사는 유저의 지시를 따르는 부하로 묘사하라.\n`) +
         `강태구 경사: 멘탈${kimMental}/신뢰${kimTrust}/체력${kimHp} → ${kimFreeze ? "⚠️ 공포로 움직이지 못하는 상태. 이번 명령 거부." : kimIgnore ? "⚠️ 신뢰 부족으로 명령 무시 확률 높음." : "정상 대응 가능."}\n` +
         (supportArrived ? `안정국 경장: 멘탈${leeMental}/신뢰${leeTrust}/체력${leeHp} → ${leeFreeze ? "⚠️ 움직이지 못하는 상태." : leeIgnore ? "⚠️ 명령 무시 가능." : "정상 대응 가능."}\n` : `안정국 경장: 미출동 (추가 지원 요청 필요)\n`) +
         `\n[현재 현장 수치]\n` +

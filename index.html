@@ -143,6 +143,17 @@
     .eval-td-bad  { color: #fed7aa; }
     .eval-restart-row { text-align: center; padding-top: 8px; border-top: 1px dashed var(--border); }
 
+    /* ── 물리력 기준표 모달 ── */
+    #force-modal { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 16px; }
+    #force-modal.open { display: flex; }
+    .force-modal-box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; max-width: 560px; width: 100%; max-height: 80vh; overflow-y: auto; padding: 18px; }
+    .force-modal-box h3 { color: #fbbf24; font-size: 15px; margin-bottom: 4px; }
+    .force-modal-box .fm-sub { color: #6b7280; font-size: 11px; margin-bottom: 12px; }
+    .force-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .force-table th { background: #111c30; color: #9ca3af; padding: 8px; border: 1px solid var(--border); font-size: 11px; }
+    .force-table td { padding: 8px; border: 1px solid var(--border); line-height: 1.6; word-break: break-word; vertical-align: top; }
+    .fm-close-btn { display: block; margin: 14px auto 0; background: #374151; border: 1px solid #4b5563; color: #f3f4f6; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
     /* ── 사망 연출 ── */
     #death-vignette { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 999;
       background: radial-gradient(ellipse at center, transparent 40%, rgba(127,29,29,0.55) 100%); }
@@ -235,6 +246,7 @@
         <input type="text" id="gemini-key" placeholder="AQ.Ab8... 형식의 API 키 입력" autocomplete="off" />
       </div>
       <button id="login-btn" class="start-submit-btn">도상훈련 시작 (집행)</button>
+      <button id="resume-btn" class="start-submit-btn" style="display:none;background:#065f46;">▶️ 이어하기 (저장된 훈련 계속)</button>
     </div>
   </div>
 
@@ -283,6 +295,10 @@
             <span style="white-space:nowrap;">💢 저항도: <span id="txt-resist">100%</span></span>
             <div class="gauge-bg"><div id="bar-resist" class="gauge-fill" style="width:100%;background:#f97316;"></div></div>
           </div>
+          <div class="gauge-wrapper">
+            <span style="white-space:nowrap;">🕊️ 협상: <span id="txt-nego">0%</span></span>
+            <div class="gauge-bg"><div id="bar-nego" class="gauge-fill" style="width:0%;background:#34d399;"></div></div>
+          </div>
           <div class="gauge-wrapper" id="victim-gauge-row" style="display:none;">
             <span style="white-space:nowrap;">🧍 피해자: <span id="txt-victim">100%</span></span>
             <div class="gauge-bg"><div id="bar-victim" class="gauge-fill" style="width:100%;background:#38bdf8;"></div></div>
@@ -317,7 +333,7 @@
     <!-- ③ 장구류 패널 (접이식) -->
     <div class="collapsible-panel" id="panel-inventory" style="background:#111c30;border-style:dashed;border-color:var(--primary);">
       <div class="collapsible-header" onclick="togglePanel('panel-inventory')" style="color:var(--primary);">
-        <span>■ 장구류 파지 패널</span>
+        <span>■ 장구류 파지 패널 <button onclick="event.stopPropagation();document.getElementById('force-modal').classList.add('open')" style="background:#374151;border:1px solid #4b5563;color:#fbbf24;font-size:11px;padding:2px 8px;border-radius:4px;cursor:pointer;margin-left:8px;">📊 물리력 기준</button></span>
         <span class="collapsible-arrow" style="color:var(--primary);">▼</span>
       </div>
       <div class="collapsible-body" style="padding-top:8px;">
@@ -368,6 +384,27 @@
 
   <div id="eval-zone"></div>
   <div id="death-vignette"></div>
+
+  <div id="force-modal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="force-modal-box">
+      <h3>📊 경찰 물리력 행사의 기준과 방법에 관한 규칙</h3>
+      <div class="fm-sub">대상자 행위 수준 ↔ 경찰관 대응 수준 (경찰청 예규, 비례원칙)</div>
+      <table class="force-table">
+        <thead><tr><th style="width:33%;">대상자 행위</th><th style="width:33%;">대응 수준</th><th>사용 가능 수단</th></tr></thead>
+        <tbody>
+          <tr><td>① 순응</td><td style="color:#10b981;">협조적 통제</td><td>언어적 통제, 가벼운 신체 접촉, 수갑</td></tr>
+          <tr><td>② 소극적 저항<br><span style="color:#6b7280;">(지시 불응, 버티기)</span></td><td style="color:#34d399;">접촉 통제</td><td>신체 일부 잡기·밀기·끌기, 관절 압박</td></tr>
+          <tr><td>③ 적극적 저항<br><span style="color:#6b7280;">(체포 회피, 뿌리치기)</span></td><td style="color:#fbbf24;">저위험 물리력</td><td>넘어뜨리기, 체포술, 분사기</td></tr>
+          <tr><td>④ 폭력적 공격<br><span style="color:#6b7280;">(폭행, 흉기 미소지)</span></td><td style="color:#f97316;">중위험 물리력</td><td>경찰봉(삼단봉) 가격, 테이저건, 방패 밀기</td></tr>
+          <tr><td>⑤ 치명적 공격<br><span style="color:#6b7280;">(흉기·총기, 생명 위협)</span></td><td style="color:#ef4444;">고위험 물리력</td><td>권총 (경고 → 공포탄 → 실탄 순), 급소 가격</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.6;">
+        ⚖️ 핵심 원칙: 대상자 행위 수준보다 <b style="color:#fbbf24;">한 단계 높은 물리력까지만</b> 허용. 상황 완화 시 즉시 하향. 경고 없는 실탄 사용은 위법 소지 (경직법 제10조의4).
+      </div>
+      <button class="fm-close-btn" onclick="document.getElementById('force-modal').classList.remove('open')">닫기</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -446,6 +483,14 @@
   let suspectResist = 100;      // 용의자 저항도 (낮을수록 체포 용이)
   let victimSafety = 100;       // 피해자 안전도 (0이면 보호 실패 게임오버)
   let hasVictim = false;        // 이번 시나리오에 보호 대상 존재 여부
+  let negotiation = 0;          // 협상 게이지 (100이면 투항)
+  let surrendered = false;      // 협상 투항 상태
+  let escapePhase = false;      // 도주 페이즈 진행 중
+  let chaseBonusNextTurn = false; // 추격 성공 → 다음 체포 보너스
+  let colleagueCrisis = false;  // 동료 위기 이벤트 진행 중
+  let colleagueCrisisDone = false; // 위기 이벤트 1회 제한
+  let rescueLockTurns = 0;      // 구출 선택 시 체포 불가 턴 수
+  let kimDown = false, leeDown = false; // 동료 쓰러짐 (CCTV 표시)
   const DIFF_FACTOR = { "초급": { atk: 0.75, fatal: 0.5 }, "중급": { atk: 1.0, fatal: 1.0 }, "상급": { atk: 1.2, fatal: 1.5 } };
   let suspectInfo = null;
   let suspectRevealed = false;  // 용의자 특성 공개 여부
@@ -496,6 +541,100 @@
   window.togglePanel = function(id) {
     document.getElementById(id).classList.toggle('collapsed');
   };
+
+  // ── 이어하기 저장 ─────────────────────────────────────────────
+  function saveGameSnapshot() {
+    try {
+      const snap = {
+        player, score, controlRate, legalRate, turnCount, maxTurns, currentTotalSeconds,
+        isArmorEquipped, pistolAmmo, taserCount, warningGiven,
+        suspectType: suspectInfo?.type, suspectRevealed, suspectRevealTurn, suspectResist,
+        negotiation, surrendered, hasVictim, victimSafety, lastReportTurn,
+        currentLocation, selectedJurisdiction, userHp, userMental,
+        kimMental, kimTrust, kimHp, leeMental, leeTrust, leeHp,
+        supportRequested, supportArrivalTurn, supportArrived,
+        difficulty, turnLog, colleagueCrisisDone, kimDown, leeDown, rescueLockTurns, chaseBonusNextTurn,
+        caseNum: document.getElementById("dispatch-case-num").textContent,
+        dDate: document.getElementById("dispatch-date").textContent,
+        dTime: document.getElementById("dispatch-time").textContent,
+        chatHTML: chatWindow.innerHTML
+      };
+      localStorage.setItem("savedGame", JSON.stringify(snap));
+    } catch (e) { /* 저장 실패 무시 */ }
+  }
+  function clearGameSnapshot() { try { localStorage.removeItem("savedGame"); } catch (e) {} }
+
+  function restoreGame() {
+    let snap;
+    try { snap = JSON.parse(localStorage.getItem("savedGame")); } catch (e) { return; }
+    if (!snap) return;
+    const apiKeyEl = document.getElementById("gemini-key");
+    if (apiKeyEl) {
+      const k = apiKeyEl.value.trim();
+      if (!k) { alert("이어하기 전에 Gemini API 키를 먼저 입력해 주십시오."); return; }
+      GEMINI_API_KEY = k;
+    }
+    player = snap.player; score = snap.score; controlRate = snap.controlRate; legalRate = snap.legalRate;
+    turnCount = snap.turnCount; maxTurns = snap.maxTurns; currentTotalSeconds = snap.currentTotalSeconds;
+    isArmorEquipped = snap.isArmorEquipped; pistolAmmo = snap.pistolAmmo; taserCount = snap.taserCount;
+    warningGiven = snap.warningGiven;
+    suspectInfo = SUSPECT_POOL.find(p => p.type === snap.suspectType) || SUSPECT_POOL[0];
+    suspectRevealed = snap.suspectRevealed; suspectRevealTurn = snap.suspectRevealTurn; suspectResist = snap.suspectResist;
+    negotiation = snap.negotiation; surrendered = snap.surrendered; hasVictim = snap.hasVictim; victimSafety = snap.victimSafety;
+    lastReportTurn = snap.lastReportTurn; currentLocation = snap.currentLocation; selectedJurisdiction = snap.selectedJurisdiction;
+    userHp = snap.userHp; userMental = snap.userMental;
+    kimMental = snap.kimMental; kimTrust = snap.kimTrust; kimHp = snap.kimHp;
+    leeMental = snap.leeMental; leeTrust = snap.leeTrust; leeHp = snap.leeHp;
+    supportRequested = snap.supportRequested; supportArrivalTurn = snap.supportArrivalTurn; supportArrived = snap.supportArrived;
+    difficulty = snap.difficulty || "중급"; turnLog = snap.turnLog || [];
+    colleagueCrisisDone = snap.colleagueCrisisDone; kimDown = snap.kimDown; leeDown = snap.leeDown;
+    rescueLockTurns = snap.rescueLockTurns || 0; chaseBonusNextTurn = snap.chaseBonusNextTurn;
+    currentHoldingWeapon = ""; isBatonActive = false; isCuffsActive = false;
+
+    // UI 복원
+    loginZone.style.display = "none";
+    simZone.style.display = "block";
+    playerInfoEl.textContent = `${player.rank} ${player.name}`;
+    document.getElementById("dispatch-case-num").textContent = snap.caseNum;
+    document.getElementById("dispatch-date").textContent = snap.dDate;
+    document.getElementById("dispatch-time").textContent = snap.dTime;
+    document.getElementById("dispatch-location").textContent = currentLocation;
+    suspectTypeEl.textContent = suspectRevealed ? `[${suspectInfo.type} - ${suspectInfo.desc}]` : "[??? - 용의자 정보 수집 중]";
+    stageEl.textContent = `${turnCount} / ${maxTurns} 턴`;
+    scoreEl.textContent = score;
+    if (supportArrived) officerLeeRow.style.display = "flex";
+    if (pistolAmmo === 0) document.getElementById("item-pistol").classList.add("disabled");
+    if (taserCount === 0) document.getElementById("item-taser").classList.add("disabled");
+    const armorEl = document.getElementById("item-armor");
+    if (isArmorEquipped && armorEl) { armorEl.classList.add("active"); armorEl.textContent = "간이 방검복 ✅ 착용 중"; }
+    chatWindow.innerHTML = snap.chatHTML || "";
+    document.querySelectorAll(".option-btn").forEach(b => b.disabled = true);
+    if (window.innerWidth < 600) {
+      ["panel-status", "panel-colleague", "panel-inventory"].forEach(id => document.getElementById(id).classList.add("collapsed"));
+    }
+    const hintBtn = document.getElementById("manual-hint-btn");
+    if (hintBtn) hintBtn.style.display = difficulty === "초급" ? "inline-block" : "none";
+    formatElapsedTime();
+    updateStatusBars(); updatePixelArt(turnCount); updateWeaponChips(); updateInputHints();
+    appendSystemNote(`▶️ 저장된 훈련을 이어합니다 (${turnCount}/${maxTurns}턴부터)`);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+
+  // 로그인 화면: 저장 데이터 있으면 이어하기 버튼 노출
+  (function initResume() {
+    try {
+      if (localStorage.getItem("savedGame")) {
+        const rb = document.getElementById("resume-btn");
+        if (rb) { rb.style.display = "block"; rb.addEventListener("click", restoreGame); }
+      }
+    } catch (e) {}
+  })();
+
+  // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외)
+  function getTimePhase() {
+    const hour = new Date().getHours();
+    return (hour >= 6 && hour < 16) ? "day" : (hour >= 16 && hour < 19) ? "dusk" : "night";
+  }
 
   // ── Web Audio 효과음 (파일 불필요) ─────────────────────────────
   let audioCtx = null;
@@ -826,6 +965,12 @@
     const hintBtn = document.getElementById("manual-hint-btn");
     if (hintBtn) hintBtn.style.display = difficulty === "초급" ? "inline-block" : "none";
 
+    // 시간대 특성 안내
+    const tp = getTimePhase();
+    appendSystemNote(tp === "night" ? "🌙 야간 출동 — 시야 제한으로 기습 위험이 증가합니다 (공격 확률↑)"
+      : tp === "dusk" ? "🌆 일몰 출동 — 곧 어두워집니다. 신속한 초동조치가 유리합니다"
+      : "☀️ 주간 출동 — 시민 목격자가 많습니다. 과잉 물리력 사용 시 감점이 가중됩니다");
+
     // 오답 노트: 지난 훈련 개선 과제 리마인드
     try {
       const lastBad = JSON.parse(localStorage.getItem("lastBadItems") || "[]");
@@ -935,9 +1080,7 @@
     const pal = getScenePalette();
     const gy = Math.floor(H * 0.85);              // 바닥선
 
-    // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외)
-    const hour = new Date().getHours();
-    const phase = (hour >= 6 && hour < 16) ? "day" : (hour >= 16 && hour < 19) ? "dusk" : "night";
+    const phase = getTimePhase();
 
     // 하늘 (시간대별)
     if (phase === "day") {
@@ -1008,8 +1151,8 @@
     // ── 인물 배치 (게임 상태 연동) ──
     const dead = userHp <= 0;
     drawPerson(ctx, 10, gy, { body: "#3b82f6", cap: "#1e3a8a", lying: dead });           // 유저
-    drawPerson(ctx, 18, gy, { body: "#3b82f6", cap: "#1e3a8a" });                        // 강태구
-    if (supportArrived) drawPerson(ctx, 26, gy, { body: "#60a5fa", cap: "#1e3a8a" });    // 안정국
+    drawPerson(ctx, 18, gy, { body: "#3b82f6", cap: "#1e3a8a", lying: kimDown });        // 강태구
+    if (supportArrived) drawPerson(ctx, 26, gy, { body: "#60a5fa", cap: "#1e3a8a", lying: leeDown }); // 안정국
 
     // 용의자: 통제도 낮을수록 경찰 쪽으로 접근
     const sx = Math.floor(W * 0.78 - (100 - controlRate) * 0.28);
@@ -1125,6 +1268,9 @@
     const barResist = document.getElementById("bar-resist");
     if (txtResist) { txtResist.textContent = `${suspectResist}%`; barResist.style.width = `${suspectResist}%`;
       barResist.style.background = suspectResist <= 40 ? "#10b981" : "#f97316"; }
+    const txtNego = document.getElementById("txt-nego");
+    if (txtNego) { txtNego.textContent = surrendered ? "투항" : `${negotiation}%`;
+      document.getElementById("bar-nego").style.width = `${surrendered ? 100 : negotiation}%`; }
     if (hasVictim) {
       const row = document.getElementById("victim-gauge-row");
       if (row) row.style.display = "flex";
@@ -1216,6 +1362,9 @@
     isArmorEquipped = false; currentHoldingWeapon = ""; isBatonActive = false; isCuffsActive = false;
     pistolAmmo = 3; taserCount = 2; warningGiven = false; pistolTension = false; lastShotWasBlank = false;
     turnLog = [];
+    negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
+    colleagueCrisis = false; colleagueCrisisDone = false; rescueLockTurns = 0; kimDown = false; leeDown = false;
+    clearGameSnapshot();
     userHp = 100; userMental = 100;
     document.body.classList.remove("death-mode");
     kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;
@@ -1270,6 +1419,7 @@
   };
 
   window.newTraining = function() {
+    clearGameSnapshot();
     document.getElementById("eval-zone").style.display = "none";
     simZone.style.display = "none";
     loginZone.style.display = "block";
@@ -1315,12 +1465,110 @@
     triggerFinalEvaluation(reasonText);
   }
 
-  async function triggerArrest() {
+  // ── 동료 위기 이벤트 ──────────────────────────────────────────
+  function triggerColleagueCrisis(who) {
+    colleagueCrisis = true;
+    colleagueCrisisDone = true;
+    if (who === "강태구 경사") kimDown = true; else leeDown = true;
+    updatePixelArt(turnCount);
+    playSfx("death");
+    if (navigator.vibrate) { try { navigator.vibrate([80, 40, 80]); } catch (e) {} }
+    sendChatBtn.disabled = true; sendActionBtn.disabled = true;
+    const div = document.createElement("div");
+    div.className = "message ai";
+    div.style.cssText = "text-align:center;padding:12px;border:1px solid #ef4444;";
+    div.innerHTML =
+      `<p style="color:#ef4444;font-weight:bold;margin-bottom:8px;">🚨 ${who}이(가) 쓰러졌습니다! 즉시 결정하십시오!</p>` +
+      `<button class="option-btn" onclick="window._resolveCrisis('rescue','${who}');this.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true)" style="background:#065f46;margin:4px;">🚑 구출 우선 (체포 지연)</button>` +
+      `<button class="option-btn" onclick="window._resolveCrisis('press','${who}');this.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true)" style="background:#7c2d12;margin:4px;">⚔️ 제압 계속 (동료 방치)</button>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+  window._resolveCrisis = function(choice, who) {
+    colleagueCrisis = false;
+    sendChatBtn.disabled = false; sendActionBtn.disabled = false;
+    if (choice === "rescue") {
+      rescueLockTurns = 2;
+      controlRate = Math.max(0, controlRate - 5);
+      kimTrust = Math.min(100, kimTrust + 15);
+      if (supportArrived) leeTrust = Math.min(100, leeTrust + 15);
+      if (who === "강태구 경사") { kimHp = 30; kimDown = false; } else { leeHp = 30; leeDown = false; }
+      appendSystemNote(`🚑 ${who} 구출·응급조치 완료 — 2턴간 체포 집행 불가, 동료 신뢰 +15, 통제도 -5`);
+    } else {
+      kimTrust = Math.max(0, kimTrust - 20);
+      if (supportArrived) leeTrust = Math.max(0, leeTrust - 20);
+      appendSystemNote(`⚔️ 동료를 방치하고 제압을 계속합니다 — 동료 신뢰 -20 (${who}는 쓰러진 상태)`);
+    }
+    updateStatusBars(); updatePixelArt(turnCount);
+  };
+
+  // ── 도주·추격 페이즈 ──────────────────────────────────────────
+  function triggerEscapePhase() {
+    escapePhase = true;
+    playSfx("hit");
+    const div = document.createElement("div");
+    div.className = "message ai";
+    div.style.cssText = "text-align:center;padding:12px;border:1px solid #f97316;";
+    div.innerHTML =
+      `<p style="color:#f97316;font-weight:bold;margin-bottom:8px;">🏃 용의자가 갑자기 도주를 시도합니다!</p>` +
+      `<button class="option-btn" onclick="window._resolveEscape('chase');this.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true)" style="background:#7c2d12;margin:4px;">🏃 직접 추격한다</button>` +
+      `<button class="option-btn" onclick="window._resolveEscape('block');this.parentElement.querySelectorAll('button').forEach(b=>b.disabled=true)" style="background:#1e3a5f;margin:4px;">🚧 강태구 경사와 협공 차단</button>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+  window._resolveEscape = function(choice) {
+    escapePhase = false;
+    if (choice === "chase") {
+      if (Math.random() < 0.60) {
+        controlRate = Math.min(100, controlRate + 10);
+        suspectResist = Math.max(0, suspectResist - 10);
+        chaseBonusNextTurn = true;
+        appendSystemNote("🏃 추격 성공! 용의자를 따라잡았습니다 (통제도 +10, 저항도 -10, 다음 체포 유리)");
+      } else {
+        controlRate = Math.max(0, controlRate - 15);
+        appendSystemNote("🏃 추격 실패... 거리가 벌어졌습니다 (통제도 -15)");
+      }
+    } else {
+      const prob = kimTrust > 60 ? 0.80 : 0.45;
+      if (Math.random() < prob) {
+        controlRate = Math.min(100, controlRate + 12);
+        suspectResist = Math.max(0, suspectResist - 12);
+        chaseBonusNextTurn = true;
+        kimTrust = Math.min(100, kimTrust + 5);
+        appendSystemNote("🚧 협공 차단 성공! 도주로를 봉쇄했습니다 (통제도 +12, 저항도 -12, 신뢰 +5)");
+      } else {
+        controlRate = Math.max(0, controlRate - 12);
+        appendSystemNote(`🚧 차단 실패... ${kimTrust > 60 ? "용의자가 틈새로 빠져나갔습니다" : "강태구 경사가 늦게 반응했습니다 (신뢰 부족)"} (통제도 -12)`);
+      }
+    }
+    updateStatusBars();
+  };
+
+  function showSurrenderArrestButton() {
+    playSfx("radio");
+    const div = document.createElement("div");
+    div.className = "message ai";
+    div.style.cssText = "text-align:center;padding:12px;border:1px solid #34d399;";
+    div.innerHTML =
+      `<p style="color:#34d399;font-weight:bold;margin-bottom:8px;">🕊️ 용의자가 투항했습니다. 무력 없이 상황이 종결 국면입니다.</p>` +
+      `<button class="option-btn" onclick="this.disabled=true;window._surrenderArrest()" style="background:#065f46;font-size:14px;padding:10px 20px;">🔗 수갑 체포 집행 (훈련 종료)</button>`;
+    chatWindow.appendChild(div);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  }
+  window._surrenderArrest = async function() {
+    legalRate = Math.min(100, legalRate + 10);
+    updateStatusBars();
+    await triggerArrest("협상체포");
+  };
+
+  async function triggerArrest(arrestMode) {
     disableGameInput("피의자 체포");
     const arrestPrompt =
       `[절대 규칙] 반드시 아래 포맷으로만 응답하라.\n` +
       `너는 대한민국 경찰관 초동조치 도상훈련 평가관이다.\n` +
       `피훈련자 ${player.name} ${player.rank}이 수갑을 사용하여 용의자 체포를 시도했다.\n` +
+      (surrendered ? `※ 용의자는 협상 끝에 이미 투항한 상태다. 무력 없이 평화롭게 체포되는 모범적 장면을 묘사하라.\n` : "") +
+      (chaseBonusNextTurn ? `※ 직전 추격/차단 성공으로 용의자가 제압 직전 상태다. 체포 성공 확률이 매우 높다.\n` : "") +
       `용의자 성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n` +
       `현장 수치: 통제도 ${controlRate}% / 적법률 ${legalRate}% / 체력 ${userHp}% / 멘탈 ${userMental}% / 용의자 저항도 ${suspectResist}%\n` +
       `삼단봉 파지 여부: ${isBatonActive ? "예(제압 유리)" : "아니오"}\n\n` +
@@ -1336,13 +1584,15 @@
     const arrestReply = await fetchGeminiResponse("피의자 수갑 체포 집행", arrestPrompt);
     formatAndAppendMessage(arrestReply, "ai");
     // 체포 장면 잠깐 보여준 뒤 평가 페이지로
-    setTimeout(() => triggerFinalEvaluation("체포완료"), 1200);
+    setTimeout(() => triggerFinalEvaluation(arrestMode === "협상체포" ? "협상체포" : "체포완료"), 1200);
   }
 
   async function triggerFinalEvaluation(reason) {
     disableGameInput("훈련 완료");
+    clearGameSnapshot();
     const reasonMap = {
       "체포완료":   "피의자 체포에 성공했습니다.",
+      "협상체포":   "협상으로 용의자를 투항시켜 체포에 성공했습니다.",
       "턴종료":     `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
       "체력소진":   "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
       "멘탈붕괴":   "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다.",
@@ -1387,6 +1637,7 @@
       `진행 턴: ${turnCount - 1}/${maxTurns}턴 | 용의자: [${suspectInfo.type}] ${suspectInfo.crimeType}\n` +
       `훈련 점수: ${score}점 | 통제도: ${controlRate}% | 적법 조치율: ${legalRate}%\n` +
       `대원 체력: ${userHp}% | 대원 멘탈: ${userMental}% | 용의자 저항도: ${suspectResist}%${hasVictim ? ` | 피해자 안전도: ${victimSafety}%` : ""}\n` +
+      (surrendered ? `※ 특기사항: 물리력 없이 협상·설득만으로 용의자를 투항시킴 (비례원칙의 모범 사례로 높이 평가하라)\n` : "") +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
       `\n${LAW_CONTEXT}${ragCtx}\n\n` +
@@ -1535,10 +1786,53 @@
       <div class="eval-restart-row">
         <p style="color:#6b7280;font-size:12px;margin-bottom:10px;">훈련 세션이 종료되었습니다.</p>
         <button class="option-btn" onclick="document.getElementById('eval-zone').style.display='none';document.getElementById('simulator-zone').style.display='block';" style="background:#374151;margin:4px;">← 뒤로가기 (훈련 내용 확인)</button>
+        <button class="option-btn" onclick="saveEvalAsImage()" style="background:#4c1d95;margin:4px;">💾 평가서 저장 (PNG)</button>
         <button class="option-btn" onclick="resetTraining()" style="background:#065f46;margin:4px;">🔄 다시 하기 (같은 설정)</button>
         <button class="option-btn" onclick="newTraining()" style="background:#1e3a5f;margin:4px;">🆕 새로 하기 (로그인 화면)</button>
       </div>
     </div>`;
+  };
+
+  // 평가서를 PNG로 저장 (외부 라이브러리 없이 SVG foreignObject 사용)
+  window.saveEvalAsImage = async function() {
+    try {
+      const page = document.querySelector("#eval-zone .eval-page");
+      if (!page) return;
+      const w = page.offsetWidth, h = page.scrollHeight;
+      // 인라인 스타일 수집 (외부 CSS는 foreignObject에 미적용되므로 문서 스타일 삽입)
+      let cssText = "";
+      for (const sheet of document.styleSheets) {
+        try { for (const r of sheet.cssRules) cssText += r.cssText + "\n"; } catch (e) {}
+      }
+      const clone = page.cloneNode(true);
+      clone.querySelectorAll("button").forEach(b => b.remove());
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+        `<foreignObject width="100%" height="100%">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="background:#1f2937;padding:0;width:${w}px;">` +
+        `<style>${cssText.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</style>` +
+        new XMLSerializer().serializeToString(clone) +
+        `</div></foreignObject></svg>`;
+      const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const cv = document.createElement("canvas");
+      cv.width = w * 2; cv.height = h * 2;
+      const c2 = cv.getContext("2d");
+      c2.scale(2, 2);
+      c2.fillStyle = "#1f2937"; c2.fillRect(0, 0, w, h);
+      c2.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const a = document.createElement("a");
+      a.download = `도상훈련_평가서_${player.name}_${new Date().toISOString().slice(0, 10)}.png`;
+      a.href = cv.toDataURL("image/png");
+      a.click();
+    } catch (e) {
+      console.warn("PNG 저장 실패:", e);
+      alert("이미지 저장에 실패했습니다. 브라우저 인쇄(Ctrl+P)로 저장해 주세요.");
+      try { window.print(); } catch (e2) {}
+    }
   };
 
   function esc(str) {
@@ -1600,9 +1894,37 @@
       } else if (/경고|정지|멈춰|손들어|내려놔|엎드려/.test(text)) {
         ctrlDelta += 4; legalDelta += 5;
         suspectResist = Math.max(0, suspectResist - 5);
+      } else if (/진정|괜찮|도와|이야기|들어줄|들어드릴|걱정|가족|천천히|약속|해결|믿|마음|사정/.test(text)) {
+        // 협상·설득 대화
+        let gain = randInt(8, 15);
+        if (suspectInfo.attackMode === "verbal") gain = Math.round(gain * 1.5);
+        negotiation = Math.min(100, negotiation + gain);
+        ctrlDelta += 2; legalDelta += 3;
+        notes.push(`🕊️ 설득 시도: 협상 게이지 +${gain}`);
       } else {
         ctrlDelta += 1;
       }
+    }
+
+    // 주간 목격자 가중: 낮에 총기·테이저 사용 시 적법률 추가 감점
+    if (inputType === "action" && (weaponUsed === "3.8구경 권총" || weaponUsed === "테이저건") && getTimePhase() === "day") {
+      legalDelta -= 3;
+      notes.push("📷 주간 시민 목격 다수: 적법률 추가 감점");
+    }
+
+    // 무기 사용은 협상 분위기 파괴
+    if (inputType === "action" && weaponUsed && weaponUsed !== "경찰 수갑" && negotiation > 0 && !surrendered) {
+      negotiation = Math.max(0, negotiation - 20);
+      notes.push("🕊️ 물리력 행사로 협상 분위기 붕괴: 협상 -20");
+    }
+
+    // 협상 100 도달 → 투항
+    if (!surrendered && negotiation >= 100) {
+      surrendered = true;
+      suspectResist = 0;
+      score += 15; scoreEl.textContent = score;
+      notes.push("🕊️ 용의자 투항! 언어적 해결 성공 (훈련점수 +15)");
+      setTimeout(showSurrenderArrestButton, 400);
     }
 
     // 동료 상태 패널티 (결정론적 임계값)
@@ -1614,9 +1936,11 @@
 
     // 용의자 공격 (확률적 통제도 영향 + 흉기 피격 데미지)
     const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
+    const timePhase = getTimePhase();
     const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
     const tensionBonus = pistolTension ? 0.15 : 0;
-    if (Math.random() < Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus) * df.atk)) {
+    const nightBonus = timePhase === "night" ? 0.08 : 0; // 야간 시야 페널티
+    if (!surrendered && Math.random() < Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus) * df.atk)) {
       const m = suspectInfo.attackMode;
       let physicalHit = false;
       if      (m === "physical") { ctrlDelta -= randInt(8, 15); physicalHit = true; }
@@ -1692,6 +2016,15 @@
     // Disable all previous option buttons
     document.querySelectorAll(".option-btn").forEach(btn => { btn.disabled = true; });
 
+    // 도주 페이즈 방치 → 도주 진행 페널티
+    if (escapePhase) {
+      escapePhase = false;
+      controlRate = Math.max(0, controlRate - 20);
+      suspectResist = Math.min(100, suspectResist + 15);
+      appendSystemNote("🏃 도주 대응 실기! 용의자가 멀어졌습니다 (통제도 -20, 저항도 +15)");
+      updateStatusBars();
+    }
+
     const preNoReport = turnCount - lastReportTurn; // 보고 전 경과 턴 (applyRoundChanges에 전달)
 
     if (inputType === "chat") {
@@ -1764,6 +2097,12 @@
 
     // 수갑 체포 감지 → 즉시 종료
     const arrestAttempt = isCuffsActive && (text.includes("수갑") || text.includes("체포") || prefix.includes("수갑") || prefix.includes("체포"));
+    if (arrestAttempt && rescueLockTurns > 0) {
+      loadingDiv.remove();
+      appendSystemNote(`🚑 동료 응급조치 중 — ${rescueLockTurns}턴 후 체포 집행 가능`);
+      sendChatBtn.disabled = false; sendActionBtn.disabled = false;
+      return;
+    }
     if (arrestAttempt) {
       loadingDiv.remove();
       await triggerArrest();
@@ -1823,7 +2162,7 @@
         `- 💬 현장 대사에는 상대방(용의자·동료·상황실·시민)이 유저의 발언을 듣고 보이는 반응 대사만 출력하라.\n` +
         `- 📝 상황 묘사에는 유저 발언이 현장에 미친 효과와 상대의 행동 변화를 서술하라.\n` +
         `피훈련자: 계급[${player.rank}] 성명[${player.name}] | 진행: ${turnCount}/${maxTurns}턴\n` +
-        `현장 위치: [${selectedJurisdiction} ${currentLocation}]\n\n` +
+        `현장 위치: [${selectedJurisdiction} ${currentLocation}] | 시간대: ${getTimePhase() === "night" ? "야간(어두움·시야제한)" : getTimePhase() === "dusk" ? "일몰 무렵" : "주간(시민 목격자 다수)"}\n\n` +
         `[용의자 정보]\n${suspectInfoStr}\n\n` +
         `[용의자 공격 지침]\n${attackInstruction}\n` +
         `[현재 동료 상태]\n` +
@@ -1897,6 +2236,7 @@
 
       scoreEl.textContent = score;
       turnCount++;
+      if (rescueLockTurns > 0) rescueLockTurns--;
       updateStatusBars();
       updatePixelArt(turnCount);
       stageEl.textContent = `${turnCount} / ${maxTurns} 턴`;
@@ -1909,6 +2249,18 @@
       if (kimTrust <= 20 && (!supportArrived || leeTrust <= 20)) { triggerGameOver("동료 신뢰 완전 붕괴로 현장 공조가 거부되어 상황 통제에 실패했습니다."); return; }
       if (hasVictim && victimSafety <= 0) { triggerGameOver("피해자 보호 실패 — 보호 대상이 중대한 위해를 입어 초동조치가 실패로 종결되었습니다."); return; }
       if (turnCount > maxTurns) { await triggerFinalEvaluation("턴종료"); return; }
+
+      // 도주 시도 트리거 (저항도 낮고 수갑 미파지, 투항 아님)
+      if (!escapePhase && !surrendered && suspectResist <= 35 && !isCuffsActive && Math.random() < 0.25) {
+        triggerEscapePhase();
+      }
+      // 동료 위기 이벤트 (1회)
+      if (!colleagueCrisisDone && (kimHp <= 0 || (supportArrived && leeHp <= 0))) {
+        triggerColleagueCrisis(kimHp <= 0 ? "강태구 경사" : "안정국 경장");
+      }
+
+      // 이어하기 스냅샷 저장
+      saveGameSnapshot();
 
     } catch (e) {
       loadingDiv.textContent = `통신 에러: ${e.message}`;

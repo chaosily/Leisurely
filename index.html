@@ -1481,8 +1481,10 @@
         playerInfoEl.dataset.dead = "1";
         playerInfoEl.innerHTML = `${esc(playerInfoEl.textContent)} <span style="color:#ef4444;">💀 사망</span>`;
         playSfx("death");
+        // 붉은 비네트·흑백 연출은 3초만 유지 후 원상복구
+        document.body.classList.add("death-mode");
+        setTimeout(() => document.body.classList.remove("death-mode"), 3000);
       }
-      document.body.classList.add("death-mode");
       // 상태 패널 강제 펼침 (사망 배너 노출)
       document.getElementById("panel-status").classList.remove("collapsed");
     } else {

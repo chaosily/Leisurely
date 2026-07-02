@@ -172,7 +172,11 @@
 
     .dual-input-panel { display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 8px; border: 1px solid var(--border); }
     .input-row { display: flex; gap: 6px; align-items: stretch; flex-wrap: nowrap; }
-    .input-desc-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 24px; }
+    .input-desc-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 24px; }
+    .mode-btn { background: #1f2937; border: 1px solid var(--border); color: #9ca3af; font-size: 12px; font-weight: bold; padding: 6px 12px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+    .mode-btn.active { background: #1e3a8a; border-color: #60a5fa; color: #fff; box-shadow: 0 0 6px rgba(96,165,250,0.4); }
+    .mode-btn#mode-radio.active { background: #065f46; border-color: var(--accent-dialogue); box-shadow: 0 0 6px rgba(80,227,194,0.4); }
+    .mode-btn#mode-action.active { background: #7c2d12; border-color: #f97316; box-shadow: 0 0 6px rgba(249,115,22,0.4); }
     .input-desc-label { font-size: 12px; font-weight: bold; color: #9ca3af; flex-shrink: 0; }
     .input-hint { font-size: 11px; color: #6b7280; }
     .dual-input-panel textarea { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--input-bg); color: var(--text); font-size: 14px; font-family: inherit; line-height: 1.5; resize: none; min-height: 52px; }
@@ -358,29 +362,21 @@
     <div id="chat-window"></div>
 
     <div class="dual-input-panel">
-      <!-- 1행: 현장조치 설명 + 장구 상태 -->
+      <!-- 1행: 입력 모드 선택 + 장구 상태 -->
       <div class="input-desc-row">
-        <span class="input-desc-label">🛡️ 현장조치</span>
+        <button id="mode-chat" class="mode-btn active" onclick="setInputMode('chat')">🗣️ 대화</button>
+        <button id="mode-radio" class="mode-btn" onclick="setInputMode('radio')">📡 무전</button>
+        <button id="mode-action" class="mode-btn" onclick="setInputMode('action')">🛡️ 조치</button>
         <span id="weapon-prefix" class="weapon-prefix-badge"></span>
-        <span id="action-hint" class="input-hint">장구 미파지 — 전술 조치를 입력하세요</span>
+        <span id="action-hint" class="input-hint"></span>
         <button id="manual-hint-btn" onclick="showManualHint()" style="display:none;margin-left:auto;background:#374151;border:1px solid #4b5563;color:#fbbf24;font-size:11px;padding:3px 8px;border-radius:4px;cursor:pointer;">📖 표준 대응 힌트</button>
       </div>
-      <!-- 2행: 조치 입력 (2줄) -->
+      <!-- 2행: 통합 입력창 -->
       <div class="input-row">
-        <textarea id="action-input" rows="2" placeholder="전술 제압 명령 또는 방어선 구축 전술 입력... (Enter 전송)"></textarea>
-        <button id="send-action-btn" class="btn-action-trigger btn-action-primary">집행</button>
+        <textarea id="chat-input" rows="2" placeholder="동료 대화 또는 피의자 설득 대사 입력... (Enter 전송)"></textarea>
+        <button id="send-chat-btn" class="btn-action-trigger btn-action-primary">전송</button>
       </div>
-      <!-- 3행: 대화/무전 설명 + 무전 토글 -->
-      <div class="input-desc-row">
-        <span class="input-desc-label">🗣️ 대화/무전</span>
-        <button id="radio-toggle" class="radio-toggle-btn">무전 OFF</button>
-        <span id="chat-hint" class="input-hint">동료 대화 또는 용의자 설득</span>
-      </div>
-      <!-- 4행: 대화 입력 (2줄) -->
-      <div class="input-row">
-        <textarea id="chat-input" rows="2" placeholder="동료 무전 또는 피의자 설득 대사 입력... (Enter 전송)"></textarea>
-        <button id="send-chat-btn" class="btn-action-trigger">전송</button>
-      </div>
+      <button id="radio-toggle" style="display:none;"></button>
     </div>
   </div>
 
@@ -505,6 +501,7 @@
   let rescueLockTurns = 0;      // 구출 선택 시 체포 불가 턴 수
   let kimDown = false, leeDown = false; // 동료 쓰러짐 (CCTV 표시)
   let gameClockMs = 0;          // 게임 내 시각 (턴당 8~15분 경과)
+  let pistolGripTurn = -1;      // 권총 파지 효과는 턴당 1회만
   const DIFF_FACTOR = { "초급": { atk: 0.75, fatal: 0.5 }, "중급": { atk: 1.0, fatal: 1.0 }, "상급": { atk: 1.2, fatal: 1.5 } };
   let suspectInfo = null;
   let suspectRevealed = false;  // 용의자 특성 공개 여부
@@ -531,9 +528,9 @@
   const simZone        = document.getElementById("simulator-zone");
   const loginBtn       = document.getElementById("login-btn");
   const sendChatBtn    = document.getElementById("send-chat-btn");
-  const sendActionBtn  = document.getElementById("send-action-btn");
+  const sendActionBtn  = sendChatBtn; // 통합 전송 버튼
   const chatInputEl    = document.getElementById("chat-input");
-  const actionInputEl  = document.getElementById("action-input");
+  const actionInputEl  = chatInputEl; // 통합 입력창
   const radioToggleBtn = document.getElementById("radio-toggle");
   const chatWindow     = document.getElementById("chat-window");
   const scoreEl        = document.getElementById("current-score");
@@ -787,24 +784,26 @@
   }
 
   loginBtn.addEventListener("click", handleLogin);
-  sendChatBtn.addEventListener("click", () => handleInputTransmission("chat"));
-  sendActionBtn.addEventListener("click", () => handleInputTransmission("action"));
-  chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInputTransmission("chat"); } });
-  actionInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInputTransmission("action"); } });
+  sendChatBtn.addEventListener("click", () => handleInputTransmission(inputMode === "action" ? "action" : "chat"));
+  chatInputEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleInputTransmission(inputMode === "action" ? "action" : "chat"); } });
 
-  radioToggleBtn.addEventListener("click", () => {
-    isRadioMode = !isRadioMode;
-    if (isRadioMode) {
-      radioToggleBtn.classList.add("active");
-      radioToggleBtn.textContent = "무전 ON";
-      chatInputEl.placeholder = "[무전] 상황실 또는 출동망 교신 내용 입력...";
-    } else {
-      radioToggleBtn.classList.remove("active");
-      radioToggleBtn.textContent = "무전 OFF";
-      chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
-    }
+  // 통합 입력 모드 (대화/무전/조치)
+  let inputMode = "chat";
+  window.setInputMode = function(mode) {
+    inputMode = mode;
+    isRadioMode = mode === "radio";
+    ["chat", "radio", "action"].forEach(m => {
+      const b = document.getElementById("mode-" + m);
+      if (b) b.classList.toggle("active", m === mode);
+    });
+    chatInputEl.placeholder =
+      mode === "action" ? "전술 제압 명령 또는 방어선 구축 전술 입력... (Enter 전송)"
+      : mode === "radio" ? "[무전] 112상황실 육하원칙 보고 내용 입력... (Enter 전송)"
+      : "동료 대화 또는 피의자 설득 대사 입력... (Enter 전송)";
+    sendChatBtn.textContent = mode === "action" ? "집행" : "전송";
     updateInputHints();
-  });
+    chatInputEl.focus();
+  };
 
   // 시스템 노트 (채팅창 회색 안내)
   function appendSystemNote(text) {
@@ -830,19 +829,23 @@
     if (cuffsEl) cuffsEl.textContent = isCuffsActive ? `경찰 수갑 ✅ 파지 중` : `경찰 수갑`;
   }
 
-  // 입력란 힌트 갱신
+  // 입력란 힌트 갱신 (통합 모드)
   function updateInputHints() {
     const actionHint = document.getElementById("action-hint");
-    if (actionHint) {
+    if (!actionHint) return;
+    if (isRadioMode) {
+      actionHint.textContent = "📡 112상황실 육하원칙 보고";
+      actionHint.style.color = "#50e3c2";
+    } else if (typeof inputMode !== "undefined" && inputMode === "action") {
       actionHint.textContent = currentHoldingWeapon
-        ? `${currentHoldingWeapon} 파지 중 — 제압·체포 조치를 입력하세요`
-        : "장구 미파지 — 전술 조치를 입력하세요";
+        ? `${currentHoldingWeapon} 파지 중 — 제압·체포 조치 입력`
+        : "장구 미파지 — 전술 조치 입력";
+      actionHint.style.color = currentHoldingWeapon ? "#f97316" : "#6b7280";
+    } else {
+      actionHint.textContent = currentHoldingWeapon
+        ? `${currentHoldingWeapon} 파지 중`
+        : "동료 대화 또는 용의자 설득";
       actionHint.style.color = currentHoldingWeapon ? "#60a5fa" : "#6b7280";
-    }
-    const chatHint = document.getElementById("chat-hint");
-    if (chatHint) {
-      chatHint.textContent = isRadioMode ? "📡 무전 ON — 112상황실 육하원칙 보고" : "동료 대화 또는 용의자 설득";
-      chatHint.style.color = isRadioMode ? "#50e3c2" : "#6b7280";
     }
   }
 
@@ -879,8 +882,9 @@
     weaponPrefixEl.textContent = badgeMap[itemName] || `${itemName} 파지`;
     weaponPrefixEl.style.display = "inline-block";
 
-    // 권총 파지 반응: 용의자 성향에 따라 위축 또는 격앙
-    if (itemName === "3.8구경 권총") {
+    // 권총 파지 반응: 용의자 성향에 따라 위축 또는 격앙 (턴당 1회만 — 반복 토글 악용 방지)
+    if (itemName === "3.8구경 권총" && pistolGripTurn !== turnCount) {
+      pistolGripTurn = turnCount;
       if (suspectRevealed && (suspectInfo.type === "사이코형" || suspectInfo.type === "깡패형")) {
         pistolTension = true;
         appendSystemNote("⚠️ 권총 파지에 용의자가 격앙됩니다! 이번 턴 공격 위험 증가");
@@ -891,8 +895,7 @@
       }
     }
     updateWeaponChips();
-    updateInputHints();
-    actionInputEl.focus();
+    window.setInputMode("action"); // 장구 파지 → 조치 모드 자동 전환
   };
 
   window.toggleArmor = function(element) {
@@ -1453,8 +1456,7 @@
     sendActionBtn.disabled = true;
     chatInputEl.disabled = true;
     actionInputEl.disabled = true;
-    radioToggleBtn.disabled = true;
-    radioToggleBtn.style.opacity = "0.4";
+    document.querySelectorAll(".mode-btn").forEach(b => { b.disabled = true; b.style.opacity = "0.4"; });
     // 모든 장구 토글 잠금
     document.querySelectorAll(".inventory-slots .item-chip").forEach(c => c.classList.add("disabled"));
     // 기존 추천 선택지 버튼 잠금 (이후 추가되는 종합평가 버튼은 영향 없음)
@@ -1468,6 +1470,7 @@
     pistolAmmo = 3; taserCount = 2; warningGiven = false; pistolTension = false; lastShotWasBlank = false;
     turnLog = [];
     negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
+    pistolGripTurn = -1;
     colleagueCrisis = false; colleagueCrisisDone = false; rescueLockTurns = 0; kimDown = false; leeDown = false;
     clearGameSnapshot();
     gameClockMs = Date.now();
@@ -1490,8 +1493,8 @@
     scoreEl.textContent = "0";
     sendChatBtn.disabled = false; sendActionBtn.disabled = false;
     chatInputEl.disabled = false; actionInputEl.disabled = false;
-    radioToggleBtn.classList.remove("active"); radioToggleBtn.textContent = "무전 OFF";
-    radioToggleBtn.disabled = false; radioToggleBtn.style.opacity = "1";
+    document.querySelectorAll(".mode-btn").forEach(b => { b.disabled = false; b.style.opacity = "1"; });
+    window.setInputMode("chat");
     // 사망 상태 복구
     delete playerInfoEl.dataset.dead;
     playerInfoEl.textContent = `${player.rank} ${player.name}`;
@@ -2165,11 +2168,7 @@
       chatInputEl.value = "";
       if (isRadioMode) {
         radioUsedThisTurn = true;
-        isRadioMode = false;
-        radioToggleBtn.classList.remove("active");
-        radioToggleBtn.textContent = "무전 OFF";
-        chatInputEl.placeholder = "동료 무전 또는 피의자 설득 대사 입력...";
-        updateInputHints();
+        window.setInputMode("chat"); // 무전 전송 후 대화 모드 복귀
       }
     } else {
       text = actionInputEl.value.trim();

@@ -784,10 +784,12 @@
 
   async function fetchGeminiResponse(userMessage, systemPrompt, highQuality = false) {
     const MODELS = highQuality
-      ? ["gemini-2.5-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-8b"]
-      : ["gemini-2.0-flash-lite", "gemini-2.5-flash", "gemini-1.5-flash-8b"];
+      ? ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash"]
+      : ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-2.5-flash"];
     const maxTokens = 8192;
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (const model of MODELS) {
+      for (let attempt = 0; attempt < 2; attempt++) {
       try {
         // 2.5 계열: thinking 토큰이 출력 예산을 잠식해 본문이 잘리는 문제 방지
         const genCfg = { temperature: 0.7, maxOutputTokens: maxTokens };
@@ -811,10 +813,14 @@
           return data.candidates[0].content.parts[0].text;
         }
         console.error(`[Gemini ${model}] HTTP ${response.status}:`, JSON.stringify(data));
-        // 4xx 오류면 다음 모델 시도, 5xx면 재시도 의미없음
-        if (response.status >= 500) break;
+        // 503(과부하)/429(쿼터): 잠시 후 같은 모델 1회 재시도, 그 외(404 등)는 다음 모델로
+        if ((response.status === 503 || response.status === 429) && attempt === 0) { await sleep(1500); continue; }
+        break;
       } catch (error) {
         console.error(`[Gemini ${model}] 네트워크 에러:`, error.message);
+        if (attempt === 0) { await sleep(1000); continue; }
+        break;
+      }
       }
     }
     return "상황실 무전망에 일시적인 오류가 발생했습니다. 콘솔(F12)에서 에러를 확인하세요.";
@@ -1324,15 +1330,24 @@
       ctx.fillStyle = "#55555f"; ctx.fillRect(lampX - 6, hy - 21, 3, 2);
     }
 
-    // ── 경찰차 + 인물 (도로 무대) ──
+    // ── 경찰차 + 인물 (도로 무대, 상황 연동 이동) ──
     drawPoliceCar(ctx, 4, H - 4, stageNum);
     const dead = userHp <= 0;
-    drawPerson(ctx, 38, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: dead });            // 유저
-    drawPerson(ctx, 56, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: kimDown });         // 강태구
-    if (supportArrived) drawPerson(ctx, 74, baseY, { body: "#4a7fd6", cap: "#152c5e", vest: true, lying: leeDown }); // 안정국
 
-    // 용의자: 통제도 낮을수록 경찰 쪽으로 접근
-    const sx = Math.max(96, Math.floor(W * 0.82 - (100 - controlRate) * 0.55));
+    // 용의자 위치: 통제도 낮을수록 경찰 쪽으로 접근, 도주 중이면 화면 끝으로
+    let sx = Math.max(96, Math.floor(W * 0.82 - (100 - controlRate) * 0.55));
+    if (escapePhase) sx = W - 22;
+    if (surrendered) sx = Math.min(sx, 110);
+
+    // 경찰 대열: 통제도 높을수록 전진, 수갑 체포·투항 국면엔 용의자 근접
+    let copLead = 38 + Math.max(0, controlRate - 50) * 0.6;
+    if (isCuffsActive || surrendered || chaseBonusNextTurn) copLead = sx - 22;
+    if (escapePhase) copLead = sx - 40;                    // 도주 추격 중
+    copLead = Math.max(36, Math.min(copLead, sx - 20));
+
+    drawPerson(ctx, Math.floor(copLead), baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: dead });                      // 유저 (선두)
+    drawPerson(ctx, Math.floor(copLead) - 16, baseY, { body: "#2e5fb8", cap: "#152c5e", vest: true, lying: kimDown });              // 강태구
+    if (supportArrived) drawPerson(ctx, Math.floor(copLead) - 32, baseY, { body: "#4a7fd6", cap: "#152c5e", vest: true, lying: leeDown }); // 안정국
     const suspectBody = suspectRevealed
       ? ({ "깡패형": "#ef4444", "사이코형": "#c084fc", "교활형": "#f59e0b", "성범죄자형": "#fb923c", "음주폭력형": "#f87171", "교통도주형": "#9ca3af", "가정폭력형": "#dc2626" }[suspectInfo?.type] || "#ef4444")
       : "#b45050";

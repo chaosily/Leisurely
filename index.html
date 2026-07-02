@@ -143,6 +143,13 @@
     .eval-td-bad  { color: #fed7aa; }
     .eval-restart-row { text-align: center; padding-top: 8px; border-top: 1px dashed var(--border); }
 
+    /* ── Mission Complete 배너 ── */
+    .mission-complete-banner { text-align: center; padding: 26px 12px; margin: 10px 0; border: 2px solid #10b981; border-radius: 10px;
+      background: linear-gradient(135deg, rgba(6,95,70,0.5) 0%, rgba(16,185,129,0.15) 100%); animation: mcPop 0.6s ease-out; }
+    .mission-complete-banner .mc-title { font-size: 1.6rem; font-weight: bold; color: #10b981; letter-spacing: 3px; text-shadow: 0 0 12px rgba(16,185,129,0.6); }
+    .mission-complete-banner .mc-sub { font-size: 12px; color: #a7f3d0; margin-top: 8px; }
+    @keyframes mcPop { 0% { transform: scale(0.7); opacity: 0; } 70% { transform: scale(1.05); } 100% { transform: scale(1); opacity: 1; } }
+
     /* ── 물리력 기준표 모달 ── */
     #force-modal { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.7); align-items: center; justify-content: center; padding: 16px; }
     #force-modal.open { display: flex; }
@@ -433,6 +440,17 @@
     "대전광역시 유성구": ["궁동 대학가 술집 거리", "노은동 상업지구", "관평동 주택가"],
   };
 
+  // 경찰청 예규·표준 대응 매뉴얼 (게임 진행·평가 RAG 컨텍스트)
+  const POLICE_MANUAL_CONTEXT = `
+[경찰청 예규·표준 대응 매뉴얼]
+- 경찰 물리력 행사의 기준과 방법에 관한 규칙(경찰청 예규): 대상자 행위를 순응/소극적 저항/적극적 저항/폭력적 공격/치명적 공격 5단계로 구분, 각 단계보다 한 단계 높은 물리력까지만 허용. 상황 완화 시 즉시 물리력 수준 하향. 사용 후 부상자 확인·응급조치·보고 의무.
+- 112 신고처리 표준 매뉴얼: 코드0~1(최단시간 출동) 사건은 현장 도착 즉시 상황실 보고, 이후 상황 변동 시 수시 보고. 보고 지연은 지휘 공백 초래로 감찰 대상.
+- 현장 출동 표준 대응 매뉴얼: 2인 1조 행동 원칙, 단독 진입 금지. 현행범 체포 시 미란다 원칙(범죄사실 요지·체포 이유·변호인 선임권) 고지 의무 (형사소송법 제200조의5).
+- 흉기 소지자 대응 매뉴얼: 3m 이상 안전거리 유지, 방검복 착용 권장, 경고 후 테이저건 우선 사용, 총기는 최후 수단.
+- 가정폭력 대응 매뉴얼: 가해자·피해자 즉시 분리, 피해자 의사 확인, 긴급임시조치(주거 퇴거·접근 금지) 검토, 재발 우려 시 체포 우선.
+- 주취자 대응 매뉴얼: 언어적 자극 최소화, 보호조치(경직법 제4조) 우선 검토, 폭력 시 신속 제압.
+- 정신질환 의심자 대응: 자·타해 위험 시 응급입원 의뢰 가능, 자극적 언행 금지, 전문요원 지원 요청.`;
+
   // attackMode: "physical"(체력감소), "verbal"(멘탈감소), "random"
   // armedWith: "gun"(총기 50% 즉사/-50~80), "blade"(도검 20% 즉사/-30~60), "blunt"(둔기 -20~50), "none"(맨손 -5~15)
   const SUSPECT_POOL = [
@@ -609,9 +627,6 @@
     if (isArmorEquipped && armorEl) { armorEl.classList.add("active"); armorEl.textContent = "간이 방검복 ✅ 착용 중"; }
     chatWindow.innerHTML = snap.chatHTML || "";
     document.querySelectorAll(".option-btn").forEach(b => b.disabled = true);
-    if (window.innerWidth < 600) {
-      ["panel-status", "panel-colleague", "panel-inventory"].forEach(id => document.getElementById(id).classList.add("collapsed"));
-    }
     const hintBtn = document.getElementById("manual-hint-btn");
     if (hintBtn) hintBtn.style.display = difficulty === "초급" ? "inline-block" : "none";
     formatElapsedTime();
@@ -951,10 +966,6 @@
     loginZone.style.display = "none";
     simZone.style.display = "block";
     playerInfoEl.textContent = `${rank} ${name}`;
-    // 모바일: 채팅창 확보를 위해 패널 기본 접힘
-    if (window.innerWidth < 600) {
-      ["panel-status", "panel-colleague", "panel-inventory"].forEach(id => document.getElementById(id).classList.add("collapsed"));
-    }
 
     updateStatusBars();
     updatePixelArt(1);
@@ -1573,6 +1584,7 @@
       `현장 수치: 통제도 ${controlRate}% / 적법률 ${legalRate}% / 체력 ${userHp}% / 멘탈 ${userMental}% / 용의자 저항도 ${suspectResist}%\n` +
       `삼단봉 파지 여부: ${isBatonActive ? "예(제압 유리)" : "아니오"}\n\n` +
       `체포 성공 여부를 저항도·적법률·통제도, 삼단봉 파지 여부를 고려하여 판정하라.\n` +
+      `체포 장면에 미란다 원칙 고지(범죄사실 요지·체포 이유·변호인 선임권)를 반드시 포함하라 (경찰청 표준 매뉴얼).\n` +
       `저항도 40% 이하면 체포 순조롭게 성공. 40~70%면 격렬한 몸싸움 끝에 성공. 70% 초과면 체포 실패 위기 끝에 가까스로 성공 또는 동료 지원으로 성공.\n` +
       `적법률 50% 이상, 통제도 40% 이상이면 체포 성공 가능.\n\n` +
       `출력 포맷:\n` +
@@ -1640,13 +1652,14 @@
       (surrendered ? `※ 특기사항: 물리력 없이 협상·설득만으로 용의자를 투항시킴 (비례원칙의 모범 사례로 높이 평가하라)\n` : "") +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
-      `\n${LAW_CONTEXT}${ragCtx}\n\n` +
+      `\n${LAW_CONTEXT}${ragCtx}\n${POLICE_MANUAL_CONTEXT}\n\n` +
       `[평가 지침]\n` +
       `- 경찰관 직무집행법 제2조(직무범위)에만 집중하지 말 것.\n` +
       `- 1단계: 용의자 행위([${suspectInfo.type}] ${suspectInfo.crimeType})에 대해 형법·특별법 적용요건(구성요건) 충족 여부를 먼저 검토하라.\n` +
       `- 2단계: 피훈련자의 조치가 해당 법령상 허용 요건(비례원칙·보충성·급박성)을 충족했는지 판단하라.\n` +
       `- 3단계: 위 판례 중 유사 사안의 판례를 선택하여 피훈련자의 조치와 비교 평가하라.\n` +
       `- 잘한 점·미흡한 점 각 항목마다 적절한 조문을 인용하고, 각각 최소 1개 이상의 판례를 포함하라.\n` +
+      `- 경찰청 예규·매뉴얼(물리력 행사 기준 5단계, 112 보고 의무, 2인 1조, 미란다 고지, 흉기 대응 안전거리 등) 준수 여부를 반드시 검토하여 인용하라.\n` +
       `  예: (대법원 2016도19417), (대법원 2015다248342), (헌재 2002헌마51) 등 위 판례에서 직접 인용.\n` +
       `- 수치(통제도·적법률·체력)를 근거로 구체적으로 평가. 수치가 낮으면 그 원인을 법령 기준으로 분석하라.\n\n` +
       `출력 포맷 (반드시 이 순서로, 이모지 접두사 포함):\n` +
@@ -1662,12 +1675,23 @@
     loadingMsg.remove();
     window._pendingEvalReply = evalReply;
     window._pendingEvalReason = reasonMap[reason] || reason;
+    const isMissionComplete = reason === "체포완료" || reason === "협상체포";
+    if (isMissionComplete) {
+      const mc = document.createElement("div");
+      mc.className = "mission-complete-banner";
+      mc.innerHTML =
+        `<div class="mc-title">🎖 MISSION COMPLETE</div>` +
+        `<div class="mc-sub">${reason === "협상체포" ? "협상을 통한 무혈 체포 — 모범적 초동조치" : "피의자 신병 확보 — 초동조치 임무 완수"}</div>`;
+      chatWindow.appendChild(mc);
+      playSfx("radio");
+      if (navigator.vibrate) { try { navigator.vibrate([60, 40, 60, 40, 120]); } catch (e) {} }
+    }
     const evalBtnDiv = document.createElement("div");
     evalBtnDiv.className = "message ai";
     evalBtnDiv.style.cssText = "text-align:center;padding:16px;";
     evalBtnDiv.innerHTML =
-      `<p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">훈련이 종료되었습니다. 종합평가를 확인하세요.</p>` +
-      `<button class="option-btn" onclick="showEvalPage(window._pendingEvalReply, window._pendingEvalReason)" style="background:#1e3a8a;margin:4px;font-size:14px;padding:12px 24px;">📊 종합평가 보기</button>`;
+      `<p style="color:#9ca3af;font-size:12px;margin-bottom:12px;">${isMissionComplete ? "임무가 완료되었습니다." : "훈련이 종료되었습니다."} 종합평가를 확인하세요.</p>` +
+      `<button class="option-btn" onclick="showEvalPage(window._pendingEvalReply, window._pendingEvalReason)" style="background:${isMissionComplete ? "#065f46" : "#1e3a8a"};margin:4px;font-size:14px;padding:12px 24px;">📊 종합평가 보기</button>`;
     chatWindow.appendChild(evalBtnDiv);
     chatWindow.scrollTop = chatWindow.scrollHeight;
   }
@@ -2191,7 +2215,9 @@
         `- 통제도 ${controlRate}% ≤50이면 서장 경고 🚨 포함 (무전보고 턴 제외)\n` +
         `- 적법률 ${legalRate}% ≤60이면 시민 카메라 📢 포함\n` +
         `- 삼단봉 활성 시 물리적 제압 효과 크게 묘사\n\n` +
-        `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 극히 인색하게 채점.\n\n` +
+        `[경찰청 예규 준수 기준 - 상황 판정에 반영]\n` +
+        `물리력은 대상자 행위 수준보다 한 단계 높은 수준까지만 적법. 흉기 대치 시 3m 안전거리. 2인 1조 원칙. 체포 시 미란다 고지 필요. 코드0 사건은 수시 상황실 보고 의무.\n\n` +
+        `[점수 기준]\n적법 조치, 동료 공조, 상황실 보고 시 +5~+10점. 과잉진압, 법규 위반, 무보고 지속 시 -10~-20점. 예규 위반(단독 진입, 미란다 미고지, 과잉 물리력) 시 감점 가중. 극히 인색하게 채점.\n\n` +
         `[문체 지침]\n` +
         `- 상황 묘사는 웹소설처럼 한두 문장마다 줄을 바꿔 작성하라. 문단 사이에 빈 줄을 넣어 가독성을 확보하라.\n` +
         `- 피훈련자(${player.name} ${player.rank})는 반드시 1인칭 "나"로 지칭하라. "나는 삼단봉을 고쳐 쥐었다"처럼 유저가 직접 주인공이 된 시점으로 묘사하라. "${player.name} ${player.rank}은(는)" 같은 3인칭 표기 금지.\n` +

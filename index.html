@@ -2092,7 +2092,49 @@
   }
 
   // ── 클라이언트 사이드 통제도/적법률 계산 ──────────────────────────────
-  function applyRoundChanges(inputType, weaponUsed, isRadioTurn, text, preNoReport) {
+  // 용의자 공격 사전 판정 (AI 프롬프트 생성 전에 확정 → 상황 묘사에 피격 반영)
+  function rollSuspectAttack() {
+    const res = { attacked: false, physicalHit: false, fatal: false, dmg: 0, icon: "👊", ctrlLoss: 0, armorSaved: false, weaponName: "맨손" };
+    if (surrendered || !suspectInfo) return res;
+    const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
+    const timePhase = getTimePhase();
+    const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
+    const tensionBonus = pistolTension ? 0.15 : 0;
+    const nightBonus = timePhase === "night" ? 0.08 : 0;
+    if (Math.random() >= Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus) * df.atk)) return res;
+    res.attacked = true;
+    const m = suspectInfo.attackMode;
+    if      (m === "physical") { res.ctrlLoss = randInt(8, 15); res.physicalHit = true; }
+    else if (m === "verbal")   { res.ctrlLoss = randInt(3, 6); }
+    else if (m === "both")     { res.ctrlLoss = randInt(8, 15) + randInt(3, 5); res.physicalHit = true; }
+    else {
+      res.physicalHit = Math.random() < 0.5;
+      res.ctrlLoss = res.physicalHit ? randInt(8, 15) : randInt(3, 6);
+    }
+    if (res.physicalHit) {
+      const w = suspectInfo.armedWith || "none";
+      res.weaponName = { gun: "사제총기", blade: "흉기(칼)", blunt: "둔기", none: "맨손" }[w] || "맨손";
+      if (w === "gun") {
+        res.icon = "🔫";
+        if (Math.random() < Math.min(0.9, 0.5 * df.fatal)) res.fatal = true; else res.dmg = randInt(50, 80);
+      } else if (w === "blade") {
+        res.icon = "🗡️";
+        if (Math.random() < Math.min(0.9, 0.2 * df.fatal)) res.fatal = true; else res.dmg = randInt(30, 60);
+      } else if (w === "blunt") {
+        res.icon = "🔨"; res.dmg = randInt(20, 50);
+      } else {
+        res.dmg = randInt(5, 15);
+      }
+      // 방검복: 도검 즉사 방지 + 도검/둔기 데미지 40% 경감
+      if (isArmorEquipped) {
+        if (res.fatal && w === "blade") { res.fatal = false; res.dmg = randInt(30, 60); res.armorSaved = true; }
+        if (!res.fatal && (w === "blade" || w === "blunt")) res.dmg = Math.round(res.dmg * 0.6);
+      }
+    }
+    return res;
+  }
+
+  function applyRoundChanges(inputType, weaponUsed, isRadioTurn, text, preNoReport, atk) {
     let ctrlDelta = -2; // 매 턴 시간 압박
     let legalDelta = 0;
     const notes = [];
@@ -2193,55 +2235,21 @@
     // 무보고 적법률 패널티
     if (preNoReport > 3) legalDelta -= 3;
 
-    // 용의자 공격 (확률적 통제도 영향 + 흉기 피격 데미지)
-    const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
-    const timePhase = getTimePhase();
-    const baseProb = { physical: 0.55, verbal: 0.45, both: 0.65, random: 0.40 }[suspectInfo.attackMode] || 0.4;
-    const tensionBonus = pistolTension ? 0.15 : 0;
-    const nightBonus = timePhase === "night" ? 0.08 : 0; // 야간 시야 페널티
+    // 용의자 공격 (사전 판정 결과 적용 — 판정은 rollSuspectAttack에서 프롬프트 생성 전 수행)
     suspectAttackedLastTurn = false;
-    if (!surrendered && Math.random() < Math.min(0.9, (baseProb + (100 - controlRate) / 200 + tensionBonus + nightBonus) * df.atk)) {
+    if (atk && atk.attacked) {
       suspectAttackedLastTurn = true;
-      const m = suspectInfo.attackMode;
-      let physicalHit = false;
-      if      (m === "physical") { ctrlDelta -= randInt(8, 15); physicalHit = true; }
-      else if (m === "verbal")   { ctrlDelta -= randInt(3, 6); }
-      else if (m === "both")     { ctrlDelta -= randInt(8, 15) + randInt(3, 5); physicalHit = true; }
-      else {
-        physicalHit = Math.random() < 0.5;
-        ctrlDelta -= physicalHit ? randInt(8, 15) : randInt(3, 6);
-      }
-
-      // 흉기 피격 데미지 (물리 공격 성공 시)
-      if (physicalHit) {
-        const w = suspectInfo.armedWith || "none";
-        let dmg = 0, fatal = false, icon = "👊";
-        if (w === "gun") {
-          icon = "🔫";
-          if (Math.random() < Math.min(0.9, 0.5 * df.fatal)) fatal = true; else dmg = randInt(50, 80);
-        } else if (w === "blade") {
-          icon = "🗡️";
-          if (Math.random() < Math.min(0.9, 0.2 * df.fatal)) fatal = true; else dmg = randInt(30, 60);
-        } else if (w === "blunt") {
-          icon = "🔨"; dmg = randInt(20, 50);
-        } else {
-          dmg = randInt(5, 15);
-        }
-        // 방검복: 도검 즉사 방지 + 도검/둔기 데미지 40% 경감
-        if (isArmorEquipped) {
-          if (fatal && w === "blade") { fatal = false; dmg = randInt(30, 60); notes.push("🦺 방검복이 치명상을 막았습니다!"); }
-          if (!fatal && (w === "blade" || w === "blunt")) dmg = Math.round(dmg * 0.6);
-        }
-        if (fatal) {
-          userHp = 0;
-          notes.push(`${icon} 치명적 피격! 대원이 쓰러졌습니다 (즉사)`);
-          if (navigator.vibrate) { try { navigator.vibrate([100, 50, 100, 50, 400]); } catch (e) {} }
-        } else if (dmg > 0) {
-          userHp = Math.max(0, userHp - dmg);
-          notes.push(`${icon} 용의자 공격 피격: 체력 -${dmg}`);
-          playSfx("hit");
-          if (navigator.vibrate) { try { navigator.vibrate(180); } catch (e) {} }
-        }
+      ctrlDelta -= atk.ctrlLoss;
+      if (atk.armorSaved) notes.push("🦺 방검복이 치명상을 막았습니다!");
+      if (atk.fatal) {
+        userHp = 0;
+        notes.push(`${atk.icon} 치명적 피격! 대원이 쓰러졌습니다 (즉사)`);
+        if (navigator.vibrate) { try { navigator.vibrate([100, 50, 100, 50, 400]); } catch (e) {} }
+      } else if (atk.dmg > 0) {
+        userHp = Math.max(0, userHp - atk.dmg);
+        notes.push(`${atk.icon} 용의자 공격 피격: 체력 -${atk.dmg}`);
+        playSfx("hit");
+        if (navigator.vibrate) { try { navigator.vibrate(180); } catch (e) {} }
       }
     }
 
@@ -2391,17 +2399,25 @@
         ? `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n체포 방식 지침: ${suspectInfo.arrestGuide}\n공격 성향: ${suspectInfo.attackMode}`
         : `성향: [정보 수집 중 - ${turnCount < suspectRevealTurn ? `${suspectRevealTurn - turnCount}턴 후 공개 예정` : "정보 부족"}]\n주의: 아직 용의자 성향이 파악되지 않았다. 용의자의 행동을 단서로만 묘사하라.`;
 
-      // 용의자 공격 성향에 따른 이번 턴 공격 지침
-      const attackMode = suspectInfo.attackMode;
+      // 이번 턴 용의자 공격 사전 판정 (확정 결과를 AI 서사에 반영)
+      const attackRoll = rollSuspectAttack();
       let attackInstruction = "";
-      if (attackMode === "physical" || attackMode === "both") {
-        attackInstruction += `이번 턴 용의자가 물리적 공격을 가할 확률이 높다. 단, 유저 피격 데미지는 시스템이 별도 계산하므로 🔶 대원 변동에 유저 체력 변동을 절대 출력하지 마라. 동료(강태구/안정국) 체력 변동만 출력 가능.\n`;
-      }
-      if (attackMode === "verbal" || attackMode === "both") {
-        attackInstruction += `이번 턴 용의자가 폭언/심리적 압박을 가할 확률이 높다. 공격 시 🔶 대원 변동에 유저 멘탈-5~-15 또는 강태구 멘탈-5~-10을 반드시 포함하라.\n`;
-      }
-      if (attackMode === "random") {
-        attackInstruction += `이번 턴 용의자가 물리력 또는 폭언 중 하나를 랜덤으로 사용한다. 상황에 따라 체력 또는 멘탈 감소를 🔶 대원 변동에 포함하라.\n`;
+      if (attackRoll.attacked && attackRoll.physicalHit) {
+        const sev = attackRoll.fatal ? "치명상을 입고 그 자리에 쓰러진다"
+          : attackRoll.dmg >= 50 ? "중상을 입었다 (출혈·거동 곤란)"
+          : attackRoll.dmg >= 25 ? "상당한 부상을 입었다"
+          : "경미한 부상을 입었다";
+        attackInstruction =
+          `[확정 이벤트 - 반드시 반영] 이번 턴 용의자가 ${attackRoll.weaponName}(으)로 나를 직접 공격했고, 나는 ${sev}.\n` +
+          (attackRoll.armorSaved ? `방검복 덕분에 치명상은 면했다. 이 사실도 묘사에 포함하라.\n` : "") +
+          `📝 상황 묘사에 이 피격 장면과 내가 다친 상태(통증·자세·동료 반응)를 반드시 1인칭으로 생생하게 묘사하라.\n` +
+          `🔶 대원 변동에 유저 체력 변동은 출력 금지 (시스템이 이미 반영).\n`;
+      } else if (attackRoll.attacked) {
+        attackInstruction =
+          `[확정 이벤트 - 반드시 반영] 이번 턴 용의자가 나에게 격렬한 폭언·심리적 위협을 가했다.\n` +
+          `📝 상황 묘사에 이 언어적 공격과 심리적 압박감을 반드시 포함하라. 🔶 대원 변동에 유저 멘탈-5~-15 포함 가능.\n`;
+      } else {
+        attackInstruction = `이번 턴 용의자의 직접 공격은 없다(확정). 피격·부상 장면을 묘사하지 마라. 위협적 대치 상황만 묘사하라.\n`;
       }
 
       // 무전 보고 시 상황실 응답 지침
@@ -2492,7 +2508,7 @@
       if (lossMatch) score -= parseInt(lossMatch[1], 10);
 
       // 통제도/적법률은 클라이언트 사이드에서 계산 (AI 파싱 없음)
-      applyRoundChanges(inputType, weaponUsedThisAction, isRadioTurn, text, preNoReport);
+      applyRoundChanges(inputType, weaponUsedThisAction, isRadioTurn, text, preNoReport, attackRoll);
 
       // Parse colleague stats
       const kM = aiReply.match(/강태구\s*멘탈([-+]\d+)/); if (kM) kimMental = Math.max(10, Math.min(100, kimMental + parseInt(kM[1], 10)));

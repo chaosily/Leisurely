@@ -683,6 +683,18 @@
   // 강태구 = 경사, 안정국 = 경장
   function canCommand(targetRank) { return rankIndex(player.rank) >= rankIndex(targetRank); }
 
+  // 출동 시각 랜덤화 (게임마다 낮/노을/밤 다양하게 — 세 페이즈 가중 균형)
+  function randomDispatchMs() {
+    const r = Math.random();
+    let hour;
+    if (r < 0.45) hour = randInt(9, 15);        // 주간 45%
+    else if (r < 0.70) hour = randInt(16, 18);  // 노을 25%
+    else { const nightHours = [19,20,21,22,23,0,1,2,3,4,5]; hour = nightHours[randInt(0, nightHours.length - 1)]; } // 야간 30%
+    const d = new Date();
+    d.setHours(hour, randInt(0, 59), 0, 0);
+    return d.getTime();
+  }
+
   // 시간대: 낮(06~16) / 노을(16~19) / 밤(그 외) — 게임 내 시계 기준 (턴당 8~15분 경과)
   function getTimePhase() {
     const hour = new Date(gameClockMs || Date.now()).getHours();
@@ -1009,7 +1021,7 @@
 
     const dtInfo = getCurrentDateInfo();
     currentTotalSeconds = 0;
-    gameClockMs = Date.now();
+    gameClockMs = randomDispatchMs();
 
     document.getElementById("dispatch-case-num").textContent = dtInfo.caseNum;
     document.getElementById("dispatch-date").textContent = dtInfo.date;
@@ -1558,7 +1570,7 @@
     pistolGripTurn = -1;
     colleagueCrisis = false; colleagueCrisisDone = false; rescueLockTurns = 0; kimDown = false; leeDown = false;
     clearGameSnapshot();
-    gameClockMs = Date.now();
+    gameClockMs = randomDispatchMs();
     userHp = 100; userMental = 100;
     document.body.classList.remove("death-mode");
     kimMental = randInt(60, 90); kimTrust = randInt(60, 90); kimHp = 100;

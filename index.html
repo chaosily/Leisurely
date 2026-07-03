@@ -282,7 +282,47 @@
   const SUPABASE_KEY  = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
   const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
   const GROQ_MODEL    = "llama-3.1-8b-instant";
-  const GROQ_API_KEY  = "GROQ_KEY_PLACEHOLDER";
+
+  // Groq API 키는 코드에 하드코딩하지 않고 Supabase의 api_keys 테이블에서 실시간으로 불러온다.
+  // (공개 저장소에 키를 커밋하면 Groq가 자동으로 키를 폐기하기 때문)
+  let GROQ_API_KEY = "";
+  let groqKeyPromise = loadGroqApiKey();
+
+  async function loadGroqApiKey() {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/api_keys?select=key_value&service=eq.groq&limit=1`,
+        {
+          headers: {
+            "apikey":        SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+          },
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      if (rows.length > 0 && rows[0].key_value) {
+        GROQ_API_KEY = rows[0].key_value;
+      }
+    } catch (e) {
+      console.error("Groq API 키 로드 실패:", e);
+    }
+    return GROQ_API_KEY;
+  }
+
+  async function ensureGroqApiKey() {
+    if (GROQ_API_KEY) return GROQ_API_KEY;
+    await groqKeyPromise;
+    if (!GROQ_API_KEY) {
+      // 최초 로드에 실패했으면 한 번 더 시도 (일시적 네트워크 오류 대비)
+      groqKeyPromise = loadGroqApiKey();
+      await groqKeyPromise;
+    }
+    if (!GROQ_API_KEY) {
+      throw new Error("Groq API 키를 Supabase에서 불러오지 못했습니다. api_keys 테이블에 service='groq' 행이 있는지 확인하세요.");
+    }
+    return GROQ_API_KEY;
+  }
 
   let player      = { name: "", rank: "", dept: "" };
   let score       = 0;
@@ -426,6 +466,7 @@
     const loadingDiv = appendMessage("상황 분석 및 교관 피드백 빌드 중...", "ai");
 
     try {
+      await ensureGroqApiKey();
       const lawContext = await fetchLawContext(text);
 
       const systemPrompt =

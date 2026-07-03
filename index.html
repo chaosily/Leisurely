@@ -280,18 +280,19 @@
 
   const SUPABASE_URL  = "https://wmddgsghfbnqtotyfjxt.supabase.co";
   const SUPABASE_KEY  = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
-  const GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-  const GROQ_MODEL    = "llama-3.1-8b-instant";
+  // Gemini의 OpenAI 호환 엔드포인트 사용 (기존 chat/completions 요청 형식 그대로 유지)
+  const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+  const GEMINI_MODEL    = "gemini-2.5-flash";
 
-  // Groq API 키는 코드에 하드코딩하지 않고 Supabase의 api_keys 테이블에서 실시간으로 불러온다.
-  // (공개 저장소에 키를 커밋하면 Groq가 자동으로 키를 폐기하기 때문)
-  let GROQ_API_KEY = "";
-  let groqKeyPromise = loadGroqApiKey();
+  // Gemini API 키는 코드에 하드코딩하지 않고 Supabase의 api_keys 테이블에서 실시간으로 불러온다.
+  // (공개 저장소에 키를 커밋하면 유출 스캔에 걸려 키가 차단되기 때문)
+  let GEMINI_API_KEY = "";
+  let geminiKeyPromise = loadGeminiApiKey();
 
-  async function loadGroqApiKey() {
+  async function loadGeminiApiKey() {
     try {
       const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/api_keys?select=key_value&service=eq.groq&limit=1`,
+        `${SUPABASE_URL}/rest/v1/api_keys?select=key_value&service=eq.gemini&limit=1`,
         {
           headers: {
             "apikey":        SUPABASE_KEY,
@@ -302,26 +303,26 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const rows = await res.json();
       if (rows.length > 0 && rows[0].key_value) {
-        GROQ_API_KEY = rows[0].key_value;
+        GEMINI_API_KEY = rows[0].key_value;
       }
     } catch (e) {
-      console.error("Groq API 키 로드 실패:", e);
+      console.error("Gemini API 키 로드 실패:", e);
     }
-    return GROQ_API_KEY;
+    return GEMINI_API_KEY;
   }
 
-  async function ensureGroqApiKey() {
-    if (GROQ_API_KEY) return GROQ_API_KEY;
-    await groqKeyPromise;
-    if (!GROQ_API_KEY) {
+  async function ensureGeminiApiKey() {
+    if (GEMINI_API_KEY) return GEMINI_API_KEY;
+    await geminiKeyPromise;
+    if (!GEMINI_API_KEY) {
       // 최초 로드에 실패했으면 한 번 더 시도 (일시적 네트워크 오류 대비)
-      groqKeyPromise = loadGroqApiKey();
-      await groqKeyPromise;
+      geminiKeyPromise = loadGeminiApiKey();
+      await geminiKeyPromise;
     }
-    if (!GROQ_API_KEY) {
-      throw new Error("Groq API 키를 Supabase에서 불러오지 못했습니다. api_keys 테이블에 service='groq' 행이 있는지 확인하세요.");
+    if (!GEMINI_API_KEY) {
+      throw new Error("Gemini API 키를 Supabase에서 불러오지 못했습니다. api_keys 테이블에 service='gemini' 행이 있는지 확인하세요.");
     }
-    return GROQ_API_KEY;
+    return GEMINI_API_KEY;
   }
 
   let player      = { name: "", rank: "", dept: "" };
@@ -466,7 +467,7 @@
     const loadingDiv = appendMessage("상황 분석 및 교관 피드백 빌드 중...", "ai");
 
     try {
-      await ensureGroqApiKey();
+      await ensureGeminiApiKey();
       const lawContext = await fetchLawContext(text);
 
       const systemPrompt =
@@ -486,14 +487,14 @@
         `${turnCount}턴 현재. 10턴 도달 시 누적 점수 기준 최종 성적표(특진 엔딩, 징계 엔딩, 도주 실패 엔딩 등)를 발행하고 마감하라.\n` +
         `${lawContext}`;
 
-      const res = await fetch(GROQ_ENDPOINT, {
+      const res = await fetch(GEMINI_ENDPOINT, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${GROQ_API_KEY}`,
+          "Authorization": `Bearer ${GEMINI_API_KEY}`,
           "Content-Type":  "application/json",
         },
         body: JSON.stringify({
-          model: GROQ_MODEL,
+          model: GEMINI_MODEL,
           messages: [{ role: "system", content: systemPrompt }, ...chatHistory],
         }),
       });

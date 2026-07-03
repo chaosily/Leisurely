@@ -503,15 +503,16 @@
 - 정신질환 의심자 대응: 자·타해 위험 시 응급입원 의뢰 가능, 자극적 언행 금지, 전문요원 지원 요청.`;
 
   // attackMode: "physical"(체력감소), "verbal"(멘탈감소), "random"
-  // armedWith: "gun"(총기 50% 즉사/-50~80), "blade"(도검 20% 즉사/-30~60), "blunt"(둔기 -20~50), "none"(맨손 -5~15)
+  // armedWith: 무장 시 무기 종류 / armedChance: 실제 무장 확률 (현실 반영 — 대부분 비무장)
+  // negoMult: 협상 게이지 상승 배율 (대화 해결 용이성)
   const SUSPECT_POOL = [
-    { type: "깡패형",     crimeType: "특수폭행",       hasVictim: true,        desc: "물리적 저항 극심, 흉기 소지",               attackMode: "physical", armedWith: "blade", arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
-    { type: "사이코형",   crimeType: "특수협박",       hasVictim: true,        desc: "예측 불가 행동, 사제총기·흉기 위협",        attackMode: "both",     armedWith: "gun",   arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
-    { type: "교활형",     crimeType: "절도·사기",     hasVictim: false,     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   armedWith: "none",  arrestGuide: "협상 제안에 속임수 포함 가능. 단호한 물리적 제압 + 수갑이 효과적.", lawKeyword: "불심검문" },
-    { type: "성범죄자형", crimeType: "강간·성추행",   hasVictim: true,    desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   armedWith: "none",  arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
-    { type: "음주폭력형", crimeType: "폭행·상해",     hasVictim: true,      desc: "만취 상태 폭행, 둔기 휘두름",               attackMode: "physical", armedWith: "blunt", arrestGuide: "언어적 자극 최소화. 테이저건 또는 삼단봉으로 물리적 제압.", lawKeyword: "경찰장구" },
-    { type: "교통도주형", crimeType: "교통사고 후 도주", hasVictim: true, hasVehicle: true, desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
-    { type: "가정폭력형", crimeType: "가정폭력·아동학대", hasVictim: true,  desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   armedWith: "blunt", arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
+    { type: "깡패형",     crimeType: "특수폭행",       hasVictim: true,        desc: "물리적 저항 극심",               attackMode: "physical", armedWith: "blade", armedChance: 0.55, negoMult: 0.7, arrestGuide: "테이저건 또는 다인 제압 필요. 단독 접근 시 대원 부상 위험. 언어 설득 효과 낮음.", lawKeyword: "무기" },
+    { type: "사이코형",   crimeType: "특수협박",       hasVictim: true,        desc: "예측 불가 행동, 위협적 언동",     attackMode: "both",     armedWith: "gun",   armedChance: 0.35, negoMult: 0.6, arrestGuide: "갑작스러운 행동 유발 가능. 거리 유지 필수. 선제 자극 금지.", lawKeyword: "위험" },
+    { type: "교활형",     crimeType: "절도·사기",     hasVictim: false,     desc: "심리적 조종 시도, 도주 시도 가능성 높음",   attackMode: "verbal",   armedWith: "none",  armedChance: 0.05, negoMult: 1.6, arrestGuide: "협상 제안에 속임수 포함 가능. 대화 유도가 효과적이나 속임수 주의.", lawKeyword: "불심검문" },
+    { type: "성범죄자형", crimeType: "강간·성추행",   hasVictim: true,    desc: "현행범 도주 중, 피해자 보호 필요",           attackMode: "verbal",   armedWith: "none",  armedChance: 0.08, negoMult: 1.2, arrestGuide: "피해자 분리 최우선. 2인 이상 접근. 증거 보존 지시.", lawKeyword: "경찰장구" },
+    { type: "음주폭력형", crimeType: "폭행·상해",     hasVictim: true,      desc: "만취 상태 폭행",               attackMode: "physical", armedWith: "blunt", armedChance: 0.30, negoMult: 1.3, arrestGuide: "언어적 자극 최소화. 진정 유도 대화가 의외로 효과적.", lawKeyword: "경찰장구" },
+    { type: "교통도주형", crimeType: "교통사고 후 도주", hasVictim: true, hasVehicle: true, desc: "사고 후 현장 이탈 시도, 피해자 방치",   attackMode: "random",   armedWith: "blunt", armedChance: 0.15, negoMult: 1.2, arrestGuide: "차량 차단 우선. 도주로 차단 후 현행범 체포.", lawKeyword: "위험" },
+    { type: "가정폭력형", crimeType: "가정폭력·아동학대", hasVictim: true,  desc: "가족 대상 반복 폭력, 피해자 격리 필요", attackMode: "random",   armedWith: "blunt", armedChance: 0.30, negoMult: 1.1, arrestGuide: "피해자·가해자 즉시 분리. 긴급임시조치 발령 검토.", lawKeyword: "불심검문" },
   ];
 
   const KIM_TALK_POOL = {
@@ -559,6 +560,8 @@
   let perfectReports = 0;       // 모범 보고(육하원칙 4+) 횟수 (배지용)
   let shiftMode = false;        // 연속 근무 모드 (사건 2건 연속)
   let shiftCase = 1;            // 현재 사건 번호
+  let currentArmed = "none";    // 이번 사건 실제 무장 여부 (armedChance 롤 결과)
+  let innocentCase = false;     // 오인 신고 (실제 위법행위 없음)
   let negotiation = 0;          // 협상 게이지 (100이면 투항)
   let surrendered = false;      // 협상 투항 상태
   let escapePhase = false;      // 도주 페이즈 진행 중
@@ -629,7 +632,7 @@
         player, score, controlRate, legalRate, turnCount, maxTurns, currentTotalSeconds,
         isArmorEquipped, pistolAmmo, taserCount, warningGiven,
         suspectType: suspectInfo?.type, suspectRevealed, suspectRevealTurn, suspectResist,
-        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, hasAccomplice, evidenceCount, customScenario, shiftMode, shiftCase, perfectReports, lastReportTurn,
+        negotiation, surrendered, hasVictim, victimSafety, victimIsFemale, hasAccomplice, evidenceCount, customScenario, shiftMode, shiftCase, perfectReports, currentArmed, innocentCase, lastReportTurn,
         currentLocation, selectedJurisdiction, userHp, userMental,
         kimMental, kimTrust, kimHp, leeMental, leeTrust, leeHp,
         supportRequested, supportArrivalTurn, supportArrived,
@@ -665,6 +668,7 @@
     victimIsFemale = !!snap.victimIsFemale;
     hasAccomplice = !!snap.hasAccomplice; evidenceCount = snap.evidenceCount || 0; customScenario = snap.customScenario || "";
     shiftMode = !!snap.shiftMode; shiftCase = snap.shiftCase || 1; perfectReports = snap.perfectReports || 0;
+    currentArmed = snap.currentArmed || "none"; innocentCase = !!snap.innocentCase;
     lastReportTurn = snap.lastReportTurn; currentLocation = snap.currentLocation; selectedJurisdiction = snap.selectedJurisdiction;
     userHp = snap.userHp; userMental = snap.userMental;
     kimMental = snap.kimMental; kimTrust = snap.kimTrust; kimHp = snap.kimHp;
@@ -822,7 +826,7 @@
     if (suspectResist <= 40) stateHint.push("💢 저항도가 낮습니다. 수갑 체포 시도 적기입니다.");
     else if (suspectResist > 70) stateHint.push("💢 저항이 강합니다. 경고·공포탄·테이저로 저항도를 낮추세요.");
     if (hasVictim && victimSafety < 60) stateHint.push("🧍 피해자 안전 위험! 분리·대피 조치가 시급합니다.");
-    if (!isArmorEquipped && (suspectInfo.armedWith === "blade" || suspectInfo.armedWith === "gun")) stateHint.push("🦺 무장 용의자 — 방검복 착용을 권장합니다.");
+    if (!isArmorEquipped && suspectRevealed && (currentArmed === "blade" || currentArmed === "gun")) stateHint.push("🦺 무장 용의자 — 방검복 착용을 권장합니다.");
     appendSystemNote(`📖 ${guide}${stateHint.length ? "\n" + stateHint.join("\n") : ""}`);
   };
 
@@ -1141,6 +1145,9 @@
     hasAccomplice = Math.random() < 0.20;   // 20% 확률 2인조
     if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
     evidenceCount = 0;
+    innocentCase = Math.random() < 0.15;    // 15% 오인 신고
+    currentArmed = innocentCase ? "none" : (Math.random() < (suspectInfo.armedChance || 0) ? suspectInfo.armedWith : "none");
+    if (innocentCase) { hasAccomplice = false; hasVictim = false; victimSafety = 100; }
     const scenEl = document.getElementById("custom-scenario");
     customScenario = scenEl ? scenEl.value.trim() : "";
     if (customScenario) {
@@ -1155,6 +1162,8 @@
       }
       hasVictim = !!suspectInfo.hasVictim;
       victimSafety = hasVictim ? randInt(70, 90) : 100;
+      innocentCase = false; // 교관 지정 시나리오는 실제 사건
+      currentArmed = Math.random() < (suspectInfo.armedChance || 0) ? suspectInfo.armedWith : "none";
     }
 
     kimMental = randInt(60, 90);
@@ -1229,6 +1238,8 @@
         `- 출동 시각: ${formatGameClock()} (${getTimePhase() === "night" ? "야간 - 어둡고 시야 제한" : getTimePhase() === "dusk" ? "일몰 무렵 - 노을이 지는 시간" : "주간 - 환한 대낮, 시민 통행 많음"})\n` +
         `- 범죄 유형: ${suspectInfo.crimeType}\n` +
         `- 용의자 성향: [${suspectInfo.type}] ${suspectInfo.desc}\n` +
+        `- 무장 상태: ${currentArmed === "gun" ? "총기류 무장" : currentArmed === "blade" ? "흉기(도검) 소지" : currentArmed === "blunt" ? "둔기 소지" : "비무장"} — 묘사에 정확히 반영하라. 비무장이면 흉기를 등장시키지 마라.\n` +
+        (innocentCase ? `- ※ 실제로는 오인 신고다(위법행위 없음). 신고 내용상 수상해 보이지만, 확인하면 무고함이 드러나는 상황으로 구성하라. 유저에게 처음부터 티내지 마라.\n` : "") +
         `- 체포 지침: ${suspectInfo.arrestGuide}\n\n` +
         (customScenario
           ? `[교관 지정 시나리오 - 최우선] 다음 시나리오를 그대로 재구성하여 초동 출동 상황을 만들어라: "${customScenario}"\n`
@@ -1673,7 +1684,7 @@
       ? ({ "깡패형": "#ef4444", "사이코형": "#c084fc", "교활형": "#f59e0b", "성범죄자형": "#fb923c", "음주폭력형": "#f87171", "교통도주형": "#9ca3af", "가정폭력형": "#dc2626" }[suspectInfo?.type] || "#ef4444")
       : "#b45050";
     const weaponColor = suspectInfo && suspectRevealed
-      ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[suspectInfo.armedWith])
+      ? ({ gun: "#d5d8dc", blade: "#eaeaea", blunt: "#a68b5b", none: null }[currentArmed])
       : null;
     const wob = cctvFrame % 2;                    // 미세 움직임 (초조한 흔들림)
     const paceSeq = [0, 1, 2, 3, 2, 1];           // 왕복 페이싱 (초조하게 서성임)
@@ -1905,6 +1916,9 @@
     hasAccomplice = Math.random() < 0.20;
     if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
     evidenceCount = 0;
+    innocentCase = Math.random() < 0.15;
+    currentArmed = innocentCase ? "none" : (Math.random() < (suspectInfo.armedChance || 0) ? suspectInfo.armedWith : "none");
+    if (innocentCase) { hasAccomplice = false; hasVictim = false; victimSafety = 100; }
     const vRow = document.getElementById("victim-gauge-row");
     if (vRow) vRow.style.display = hasVictim ? "flex" : "none";
     lastReportTurn = 1;
@@ -2129,6 +2143,9 @@
     victimIsFemale = (suspectInfo.type === "성범죄자형" || suspectInfo.type === "가정폭력형") ? Math.random() < 0.85 : Math.random() < 0.5;
     hasAccomplice = Math.random() < 0.20;
     if (hasAccomplice) suspectResist = Math.min(100, suspectResist + 10);
+    innocentCase = Math.random() < 0.15;
+    currentArmed = innocentCase ? "none" : (Math.random() < (suspectInfo.armedChance || 0) ? suspectInfo.armedWith : "none");
+    if (innocentCase) { hasAccomplice = false; hasVictim = false; victimSafety = 100; }
     turnCount = 1; lastReportTurn = 1;
     negotiation = 0; surrendered = false; escapePhase = false; chaseBonusNextTurn = false;
     controlRate = 65; // 새 현장
@@ -2172,6 +2189,7 @@
     const reasonMap = {
       "체포완료":   "피의자 체포에 성공했습니다.",
       "협상체포":   "협상으로 용의자를 투항시켜 체포에 성공했습니다.",
+      "오인종결":   "오인 신고로 확인되어 대상자를 안전하게 귀가 조치했습니다.",
       "턴종료":     `${maxTurns}턴이 모두 경과하여 훈련이 종료되었습니다.`,
       "체력소진":   "대원 체력이 소진되어 현장에서 쓰러졌습니다.",
       "멘탈붕괴":   "극심한 심리적 충격으로 정상 판단이 불가능한 상태입니다.",
@@ -2220,6 +2238,8 @@
       `확보 증거: ${evidenceCount}건 (증거 확보·목격자 진술 청취는 수사 기초 역량으로 평가에 반영하라. 0건이면 미흡한 점으로 지적)\n` +
       (hasAccomplice ? `※ 공범 동행 2인조 사건이었음 (다수 대상 통제 역량 평가에 반영)\n` : "") +
       (shiftMode ? `※ 연속 근무 모드: 사건 2건을 연속 처리한 훈련이었음 (지구력·연속 대응 역량을 높이 평가하라)\n` : "") +
+      (innocentCase ? `※ 오인 신고 사건이었음: 대상자는 무고한 시민. 신중한 확인·비강제 조치 여부를 최우선 평가 기준으로 삼아라. 물리력을 썼다면 엄중히 지적하라.\n` : "") +
+      `용의자 무장: ${currentArmed === "none" ? "비무장" : currentArmed === "gun" ? "총기" : currentArmed === "blade" ? "도검" : "둔기"} (비무장 대상에게 과한 물리력을 썼는지 비례원칙으로 검토)\n` +
       `강태구 경사: 신뢰 ${kimTrust}% / 체력 ${kimHp}% / 멘탈 ${kimMental}%\n` +
       (supportArrived ? `안정국 경장: 신뢰 ${leeTrust}% / 체력 ${leeHp}% / 멘탈 ${leeMental}%\n` : `안정국 경장: 미출동\n`) +
       `\n${LAW_CONTEXT}${ragCtx}\n${POLICE_MANUAL_CONTEXT}\n\n` +
@@ -2256,13 +2276,13 @@
     loadingMsg.remove();
     window._pendingEvalReply = evalReply;
     window._pendingEvalReason = reasonMap[reason] || reason;
-    const isMissionComplete = reason === "체포완료" || reason === "협상체포";
+    const isMissionComplete = reason === "체포완료" || reason === "협상체포" || reason === "오인종결";
     if (isMissionComplete) {
       const mc = document.createElement("div");
       mc.className = "mission-complete-banner";
       mc.innerHTML =
         `<div class="mc-title">🎖 MISSION COMPLETE</div>` +
-        `<div class="mc-sub">${reason === "협상체포" ? "협상을 통한 무혈 체포 — 모범적 초동조치" : "피의자 신병 확보 — 초동조치 임무 완수"}</div>`;
+        `<div class="mc-sub">${reason === "협상체포" ? "협상을 통한 무혈 체포 — 모범적 초동조치" : reason === "오인종결" ? "신중한 확인으로 무고한 시민 보호 — 모범적 판단" : "피의자 신병 확보 — 초동조치 임무 완수"}</div>`;
       chatWindow.appendChild(mc);
       playSfx("radio");
       if (navigator.vibrate) { try { navigator.vibrate([60, 40, 60, 40, 120]); } catch (e) {} }
@@ -2518,7 +2538,7 @@
   // 용의자 공격 사전 판정 (AI 프롬프트 생성 전에 확정 → 상황 묘사에 피격 반영)
   function rollSuspectAttack() {
     const res = { attacked: false, physicalHit: false, fatal: false, dmg: 0, icon: "👊", ctrlLoss: 0, armorSaved: false, weaponName: "맨손" };
-    if (surrendered || !suspectInfo) return res;
+    if (surrendered || !suspectInfo || innocentCase) return res;
     const df = DIFF_FACTOR[difficulty] || DIFF_FACTOR["중급"];
     const timePhase = getTimePhase();
     const baseProb = { physical: 0.28, verbal: 0.26, both: 0.26, random: 0.24 }[suspectInfo.attackMode] || 0.25;
@@ -2539,7 +2559,7 @@
       res.ctrlLoss = res.physicalHit ? randInt(8, 15) : randInt(3, 6);
     }
     if (res.physicalHit) {
-      const w = suspectInfo.armedWith || "none";
+      const w = currentArmed || "none";
       res.weaponName = { gun: "사제총기", blade: "흉기(칼)", blunt: "둔기", none: "맨손" }[w] || "맨손";
       if (w === "gun") {
         res.icon = "🔫";
@@ -2637,13 +2657,20 @@
       } else if (/진정|괜찮|도와|이야기|들어줄|들어드릴|걱정|가족|천천히|약속|해결|믿|마음|사정/.test(text)) {
         // 협상·설득 대화
         let gain = randInt(8, 15);
-        if (suspectInfo.attackMode === "verbal") gain = Math.round(gain * 1.5);
+        gain = Math.round(gain * (suspectInfo.negoMult || 1));
+        if (innocentCase) gain = Math.round(gain * 1.8);   // 무고한 대상은 대화에 즉각 반응
         negotiation = Math.min(100, negotiation + gain);
         ctrlDelta += 2; legalDelta += 3;
         notes.push(`🕊️ 설득 시도: 협상 게이지 +${gain}`);
       } else {
         ctrlDelta += 1;
       }
+    }
+
+    // 오인 사건: 무고한 시민에게 물리력 행사 시 중대 감점
+    if (innocentCase && inputType === "action" && weaponUsed && weaponUsed !== "경찰 수갑") {
+      legalDelta -= 12;
+      notes.push("⚖️ 무고한 시민에게 물리력 행사! 적법률↓↓↓ (직권남용 소지)");
     }
 
     // 주간 목격자 가중: 낮에 총기·테이저 사용 시 적법률 추가 감점
@@ -2656,6 +2683,12 @@
     if (inputType === "action" && weaponUsed && weaponUsed !== "경찰 수갑" && negotiation > 0 && !surrendered) {
       negotiation = Math.max(0, negotiation - 20);
       notes.push("🕊️ 물리력 행사로 협상 분위기 붕괴: 협상 -20");
+    }
+
+    // 자진 투항: 협상이 어느 정도 진행되고 저항이 꺾이면 스스로 포기
+    if (!surrendered && negotiation >= 50 && suspectResist <= 30 && Math.random() < 0.25) {
+      negotiation = 100;
+      notes.push("🕊️ 용의자의 저항 의지가 완전히 꺾였습니다 — 자진 투항!");
     }
 
     // 협상 100 도달 → 투항
@@ -2847,12 +2880,26 @@
       // 용의자 공개 여부 판단
       if (!suspectRevealed && turnCount >= suspectRevealTurn) {
         suspectRevealed = true;
-        suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]${hasAccomplice ? " +공범 1" : ""}`;
-        if (hasAccomplice) appendSystemNote("⚠️ 공범 1명 확인! 2인조 사건입니다 — 다수 통제에 유의하십시오 (공격 확률↑)");
+        if (innocentCase) {
+          suspectTypeEl.textContent = `[오인 신고 - 실제 위법행위 없음]`;
+          appendSystemNote("🔎 확인 결과, 실제 위법행위가 없는 오인 신고로 판단됩니다. 대상자를 안심시키고 귀가·인계 조치로 종결하십시오. (물리력 행사 시 중대 감점)");
+        } else {
+          const armedTag = currentArmed === "gun" ? " ⚠️총기 무장" : currentArmed === "blade" ? " ⚠️흉기 소지" : currentArmed === "blunt" ? " ⚠️둔기 소지" : " (비무장)";
+          suspectTypeEl.textContent = `[${suspectInfo.type} - ${suspectInfo.desc}]${armedTag}${hasAccomplice ? " +공범 1" : ""}`;
+          appendSystemNote(currentArmed !== "none"
+            ? `⚠️ 용의자 무장 확인 (${currentArmed === "gun" ? "총기류" : currentArmed === "blade" ? "도검류" : "둔기류"}) — 안전거리 유지, 방검복 착용 권장`
+            : `🔎 용의자 비무장 확인 — 신체 물리력 위주 대응 가능`);
+          if (hasAccomplice) appendSystemNote("⚠️ 공범 1명 확인! 2인조 사건입니다 — 다수 통제에 유의하십시오 (공격 확률↑)");
+        }
       }
-      const suspectInfoStr = suspectRevealed
-        ? `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n체포 방식 지침: ${suspectInfo.arrestGuide}\n공격 성향: ${suspectInfo.attackMode}`
-        : `성향: [정보 수집 중 - ${turnCount < suspectRevealTurn ? `${suspectRevealTurn - turnCount}턴 후 공개 예정` : "정보 부족"}]\n주의: 아직 용의자 성향이 파악되지 않았다. 용의자의 행동을 단서로만 묘사하라.`;
+      const armedDesc = currentArmed === "gun" ? "총기류 무장" : currentArmed === "blade" ? "도검류(흉기) 소지" : currentArmed === "blunt" ? "둔기 소지" : "비무장 (맨손)";
+      const suspectInfoStr = innocentCase
+        ? (suspectRevealed
+          ? `※ 오인 신고 사건: 대상자는 실제 위법행위가 없는 무고한 시민이다 (예: 오해받은 취객, 지병 발작, 부부싸움 오인 등). 대상자는 억울해하거나 혼란스러워한다. 공격하지 않는다. 유저가 귀가·인계 조치하면 상황이 종결된다.`
+          : `성향: [정보 수집 중] — 실은 오인 신고(위법행위 없음)이지만 유저는 아직 모른다. 수상해 보이는 정황만 묘사하되, 자세히 확인하면 무고함이 드러날 단서를 심어라.`)
+        : (suspectRevealed
+          ? `성향: [${suspectInfo.type}] - ${suspectInfo.desc}\n무장: ${armedDesc}\n체포 방식 지침: ${suspectInfo.arrestGuide}\n공격 성향: ${suspectInfo.attackMode}`
+          : `성향: [정보 수집 중 - ${turnCount < suspectRevealTurn ? `${suspectRevealTurn - turnCount}턴 후 공개 예정` : "정보 부족"}]\n무장: ${armedDesc} (묘사에 반영하되 유저에게 성향은 미공개)\n주의: 아직 용의자 성향이 파악되지 않았다. 용의자의 행동을 단서로만 묘사하라.`);
 
       // 이번 턴 용의자 공격 사전 판정 (확정 결과를 AI 서사에 반영)
       const attackRoll = rollSuspectAttack();
@@ -3002,6 +3049,13 @@
       if (legalRate <= 30) { triggerGameOver("과잉 물리력 소지가 심각하게 식별되어 청문감사관실 직무집행 정지 명령이 하달되었습니다."); return; }
       if (kimTrust <= 20 && (!supportArrived || leeTrust <= 20)) { triggerGameOver("동료 신뢰 완전 붕괴로 현장 공조가 거부되어 상황 통제에 실패했습니다."); return; }
       if (hasVictim && victimSafety <= 0) { triggerGameOver("피해자 보호 실패 — 보호 대상이 중대한 위해를 입어 초동조치가 실패로 종결되었습니다."); return; }
+      // 오인 신고: 확인 후 귀가·인계 조치로 종결
+      if (innocentCase && suspectRevealed && /귀가|인계|보호\s*조치|해산|돌려보|안내|종결/.test(text)) {
+        score += 15; scoreEl.textContent = score;
+        appendSystemNote("🕊️ 오인 신고 종결 — 무고한 시민을 안전하게 조치했습니다 (훈련점수 +15)");
+        await triggerFinalEvaluation("오인종결");
+        return;
+      }
       if (turnCount > maxTurns) { await triggerFinalEvaluation("턴종료"); return; }
 
       // 도주 시도 트리거 (저항도 낮고 수갑 미파지, 투항 아님)

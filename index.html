@@ -468,33 +468,9 @@
   const SUPABASE_URL = "https://wmddgsghfbnqtotyfjxt.supabase.co";
   const SUPABASE_KEY = "sb_publishable_TXGsURx8sWAtVnVQ9CQFqA_3y2e_kRp";
 
-  // Gemini API 키는 코드에 하드코딩하지 않고 Supabase의 api_keys 테이블에서 실시간으로 불러온다.
-  // (공개 저장소에 키를 커밋하면 유출 스캔에 걸려 키가 차단되기 때문)
-  let GEMINI_API_KEY = "";
-  let geminiKeyPromise = loadGeminiApiKey();
-
-  async function loadGeminiApiKey() {
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/api_keys?select=key_value&service=eq.gemini&limit=1`,
-        { headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` } }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rows = await res.json();
-      if (rows.length > 0 && rows[0].key_value) GEMINI_API_KEY = rows[0].key_value;
-    } catch (e) {
-      console.error("Gemini API 키 로드 실패:", e);
-    }
-    return GEMINI_API_KEY;
-  }
-
-  async function ensureGeminiApiKey() {
-    if (GEMINI_API_KEY) return GEMINI_API_KEY;
-    await geminiKeyPromise;
-    if (!GEMINI_API_KEY) { geminiKeyPromise = loadGeminiApiKey(); await geminiKeyPromise; }
-    if (!GEMINI_API_KEY) throw new Error("Gemini API 키를 Supabase에서 불러오지 못했습니다. api_keys 테이블에 service='gemini' 행이 있는지 확인하세요.");
-    return GEMINI_API_KEY;
-  }
+  // Gemini 호출은 Supabase Edge Function(gemini-chat)이 서버에서 대신 수행한다.
+  // API 키는 Edge Function의 secret에만 존재하며 브라우저로는 절대 내려오지 않는다.
+  const GEMINI_PROXY_URL = `${SUPABASE_URL}/functions/v1/gemini-chat`;
 
   const JURISDICTION_MAP = {
     "서울특별시 강남구": ["테헤란로 삼성역 인근 골목", "역삼동 먹자골목 뒷골목", "강남대로 번화가 노상", "청담동 고급 주택가"],
@@ -672,12 +648,6 @@
     let snap;
     try { snap = JSON.parse(localStorage.getItem("savedGame")); } catch (e) { return; }
     if (!snap) return;
-    const apiKeyEl = document.getElementById("gemini-key");
-    if (apiKeyEl) {
-      const k = apiKeyEl.value.trim();
-      if (!k) { alert("이어하기 전에 Gemini API 키를 먼저 입력해 주십시오."); return; }
-      GEMINI_API_KEY = k;
-    }
     player = snap.player; score = snap.score; controlRate = snap.controlRate; legalRate = snap.legalRate;
     turnCount = snap.turnCount; maxTurns = snap.maxTurns; currentTotalSeconds = snap.currentTotalSeconds;
     isArmorEquipped = snap.isArmorEquipped; pistolAmmo = snap.pistolAmmo; taserCount = snap.taserCount;
@@ -861,48 +831,30 @@
   }
 
   async function fetchGeminiResponse(userMessage, systemPrompt, highQuality = false) {
-    await ensureGeminiApiKey();
-    const MODELS = highQuality
-      ? ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-2.5-flash"]
-      : ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash", "gemini-2.5-flash"];
-    const maxTokens = 8192;
+    // 모델 선택·폴백·재시도 로직은 Edge Function(gemini-chat) 서버 쪽에 있다
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    for (const model of MODELS) {
-      for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        // 2.5 계열: thinking 토큰이 출력 예산을 잠식해 본문이 잘리는 문제 방지
-        const genCfg = { temperature: 0.7, maxOutputTokens: maxTokens };
-        if (model.startsWith("gemini-2.5")) genCfg.thinkingConfig = { thinkingBudget: 0 };
-        const body = JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userMessage }] }],
-          generationConfig: genCfg
-        });
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
-        const response = await fetch(url, {
+        const res = await fetch(GEMINI_PROXY_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify({ userMessage, systemPrompt, highQuality }),
         });
-        const data = await response.json();
-        if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-          if (data.candidates[0].finishReason === "MAX_TOKENS") {
-            console.warn(`[Gemini ${model}] 출력이 토큰 상한(${maxTokens})에서 잘렸습니다.`);
-          }
-          return data.candidates[0].content.parts[0].text;
-        }
-        console.error(`[Gemini ${model}] HTTP ${response.status}:`, JSON.stringify(data));
-        // 503(과부하)/429(쿼터): 잠시 후 같은 모델 1회 재시도, 그 외(404 등)는 다음 모델로
-        if ((response.status === 503 || response.status === 429) && attempt === 0) { await sleep(1500); continue; }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.text) return data.text;
+        console.error(`[gemini-chat 프록시] HTTP ${res.status}:`, JSON.stringify(data));
+        // 503(과부하)/429(쿼터)는 잠시 후 1회 재시도
+        if ((res.status === 503 || res.status === 429) && attempt === 0) { await sleep(1500); continue; }
         break;
       } catch (error) {
-        console.error(`[Gemini ${model}] 네트워크 에러:`, error.message);
+        console.error("[gemini-chat 프록시] 네트워크 에러:", error.message);
         if (attempt === 0) { await sleep(1000); continue; }
-        break;
-      }
       }
     }
-    return null; // 모든 모델 실패 — 호출부에서 오프라인 폴백 처리
+    return null; // 실패 — 호출부에서 오프라인 폴백 처리
   }
 
   loginBtn.addEventListener("click", handleLogin);

@@ -1,24 +1,8 @@
--- Supabase SQL Editor에서 1회 실행하세요.
--- Gemini API 키를 저장하는 테이블 + 읽기 전용 공개 정책
+-- ── 현재 구조 ────────────────────────────────────────────────
+-- Gemini API 키는 더 이상 DB 테이블에 저장하지 않습니다.
+-- Edge Function(supabase/functions/gemini-chat)이 서버에서 Gemini를 호출하고,
+-- 키는 함수 secret(GEMINI_API_KEY)에만 존재합니다. 배포 방법은 해당 파일 상단 주석 참고.
 
-create table if not exists public.api_keys (
-  service    text primary key,          -- 예: 'gemini'
-  key_value  text not null,             -- 실제 API 키
-  updated_at timestamptz default now()
-);
-
-alter table public.api_keys enable row level security;
-
--- 익명(publishable) 키로 SELECT만 허용. INSERT/UPDATE/DELETE 정책은 만들지 않음
--- → 키 등록/변경은 Supabase 대시보드(Table Editor)에서만 가능
-drop policy if exists "public read api_keys" on public.api_keys;
-create policy "public read api_keys"
-  on public.api_keys
-  for select
-  using (true);
-
--- 실제 Gemini 키(AIza로 시작)로 바꿔서 실행하세요 (재실행 시 키 갱신됨)
-insert into public.api_keys (service, key_value)
-values ('gemini', 'AIza여기에_실제_GEMINI_키_입력')
-on conflict (service)
-do update set key_value = excluded.key_value, updated_at = now();
+-- ── 정리: 예전 api_keys 테이블을 만들었다면 삭제하세요 ──────────
+-- (키가 익명 읽기로 노출되는 테이블이므로 Edge Function 전환 후엔 반드시 제거)
+drop table if exists public.api_keys;
